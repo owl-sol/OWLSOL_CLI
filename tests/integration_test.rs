@@ -3,7 +3,7 @@ mod tests {
     use owlsol_cli::core::{fee_optimizer, jupiter};
     use solana_client::rpc_client::RpcClient;
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore] // Run with: cargo test -- --ignored
     async fn test_get_quote_integration() {
         let sol_mint = jupiter::get_token_mint("SOL").unwrap();
@@ -19,10 +19,11 @@ mod tests {
         println!("Quote: {} USDC → {} SOL lamports", amount, quote.out_amount);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[ignore]
     async fn test_fee_optimizer_integration() {
-        let rpc = RpcClient::new("https://api.mainnet-beta.solana.com".to_string());
+        // Use Solana devnet RPC for networked test
+        let rpc = RpcClient::new("https://api.devnet.solana.com".to_string());
 
         let fee = fee_optimizer::get_optimal_priority_fee(&rpc, fee_optimizer::FeeStrategy::Standard)
             .await;

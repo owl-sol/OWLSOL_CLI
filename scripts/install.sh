@@ -7,201 +7,87 @@
 # Usage (nightly channel):
 #   curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash -s nightly
 
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration
-REPO="owl-sol/OWLSOL_CLI"
-BIN_NAME="owlsol"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
-REQUESTED_CHANNEL="${1:-latest}"
+VERSION="${1:-nightly}"
+INSTALL_DIR="${OWLSOL_INSTALL_DIR:-$HOME/.local/bin}"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Detect OS/arch
+OS="$(uname -s)"
+ARCH="$(uname -m)"
 
-# Helper functions
-info() {
-    echo -e "${GREEN}ℹ${NC} $1"
-}
-
-warn() {
-    echo -e "${YELLOW}⚠${NC} $1"
-}
-
-error() {
-    echo -e "${RED}✗${NC} $1"
+case "$OS" in
+  Linux*) OS_TYPE="linux" ;;
+  Darwin*)
+    echo "Error: macOS builds not available yet."
     exit 1
-}
+    ;;
+  *)
+    echo "Error: Unsupported OS: $OS"
+    exit 1
+    ;;
+esac
 
-success() {
-    echo -e "${GREEN}✓${NC} $1"
-}
+case "$ARCH" in
+  x86_64|amd64)   TARGET_TRIPLE="x86_64-unknown-linux-musl" ;;
+  aarch64|arm64)  TARGET_TRIPLE="aarch64-unknown-linux-musl" ;;
+  *)
+    echo "Error: Unsupported architecture: $ARCH"
+    exit 1
+    ;;
+esac
 
-# Detect OS and architecture
-detect_platform() {
-    local os arch
-    
-    os="$(uname -s)"
-    arch="$(uname -m)"
-    
-    case "$os" in
-        Linux)
-            OS="unknown-linux-musl"
-            ;;
-        Darwin)
-            OS="apple-darwin"
-            ;;
-        *)
-            error "Unsupported OS: $os"
-            ;;
-    esac
-    
-    case "$arch" in
-        x86_64|amd64)
-            ARCH="x86_64"
-            ;;
-        aarch64|arm64)
-            ARCH="aarch64"
-            ;;
-        *)
-            error "Unsupported architecture: $arch"
-            ;;
-    esac
-    
-    TARGET="${ARCH}-${OS}"
-    info "Detected platform: $TARGET"
-}
+echo "🦉 OWLSOL CLI Installer"
+echo
+echo "ℹ Detected platform: $TARGET_TRIPLE"
 
-url_exists() {
-    curl -fsI "$1" >/dev/null 2>&1
-}
+# Compose download URL
+if [ "$VERSION" = "nightly" ]; then
+  URL="https://github.com/owl-sol/OWLSOL_CLI/releases/download/nightly/owlsol-nightly-${TARGET_TRIPLE}.tar.gz"
+else
+  URL="https://github.com/owl-sol/OWLSOL_CLI/releases/download/v${VERSION}/owlsol-${VERSION}-${TARGET_TRIPLE}.tar.gz"
+fi
 
-# Resolve which version/tag to install into VERSION
-resolve_version() {
-    case "$REQUESTED_CHANNEL" in
-        nightly)
-            VERSION="nightly"
-            info "Using nightly channel"
-            return 0
-            ;;
-        v*)
-            VERSION="$REQUESTED_CHANNEL"
-            info "Using specified version: $VERSION"
-            return 0
-            ;;
-        latest|*)
-            info "Fetching latest release version..."
-            # If no releases exist yet, this endpoint returns 404; handle gracefully
-            set +e
-            VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
-                | grep '"tag_name":' \
-                | sed -E 's/.*"([^"]+)".*/\1/')
-            rc=$?
-            set -e
-            if [ $rc -ne 0 ] || [ -z "$VERSION" ]; then
-                warn "No stable releases found yet; falling back to nightly"
-                VERSION="nightly"
-            else
-                info "Latest version: $VERSION"
-            fi
-            ;;
-    esac
-}
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
-# Download and install
-download_and_install() {
-    local tmpdir download_url archive_name
-    
-    tmpdir="$(mktemp -d)"
-    trap 'rm -rf "$tmpdir"' EXIT
-    
-    archive_name="${BIN_NAME}-${VERSION}-${TARGET}.tar.gz"
-    download_url="https://github.com/${REPO}/releases/download/${VERSION}/${archive_name}"
-    
-    info "Downloading from: $download_url"
-    
-    if ! url_exists "$download_url"; then
-        warn "Asset not found for $VERSION and target $TARGET."
-        if [ "$VERSION" != "nightly" ]; then
-            alt_url="https://github.com/${REPO}/releases/download/nightly/${BIN_NAME}-nightly-${TARGET}.tar.gz"
-            warn "Trying nightly build..."
-            if url_exists "$alt_url"; then
-                VERSION="nightly"
-                archive_name="${BIN_NAME}-${VERSION}-${TARGET}.tar.gz"
-                download_url="$alt_url"
-            else
-                error "No matching asset found for latest or nightly. Please check the Releases page."
-            fi
-        else
-            error "Nightly asset not found for target $TARGET. Please check the Releases page."
-        fi
-    fi
+echo "ℹ Downloading from: $URL"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$URL" -o "$TMP_DIR/owlsol.tar.gz"
+elif command -v wget >/dev/null 2>&1; then
+  wget -q "$URL" -O "$TMP_DIR/owlsol.tar.gz"
+else
+  echo "Error: need curl or wget"
+  exit 1
+fi
+echo "✓ Downloaded successfully"
 
-    curl -fsSL "$download_url" -o "$tmpdir/$archive_name"
-    
-    success "Downloaded successfully"
-    
-    info "Extracting archive..."
-    tar -xzf "$tmpdir/$archive_name" -C "$tmpdir"
-    
-    local bin_path="${tmpdir}/${BIN_NAME}-${VERSION}-${TARGET}/${BIN_NAME}"
-    
-    if [ ! -f "$bin_path" ]; then
-        error "Binary not found in archive: $bin_path"
-    fi
-    
-    chmod +x "$bin_path"
-    
-    info "Installing to $INSTALL_DIR..."
-    
-    # Check if we need sudo
-    if [ -w "$INSTALL_DIR" ]; then
-        mv "$bin_path" "$INSTALL_DIR/$BIN_NAME"
-    else
-        warn "Need sudo to install to $INSTALL_DIR"
-        sudo mv "$bin_path" "$INSTALL_DIR/$BIN_NAME"
-    fi
-    
-    success "Installed $BIN_NAME to $INSTALL_DIR/$BIN_NAME"
-}
+echo "ℹ Extracting archive..."
+tar -xzf "$TMP_DIR/owlsol.tar.gz" -C "$TMP_DIR"
 
-# Verify installation
-verify_installation() {
-    if ! command -v "$BIN_NAME" &> /dev/null; then
-        warn "$BIN_NAME not found in PATH"
-        warn "You may need to add $INSTALL_DIR to your PATH"
-        echo ""
-        echo "Add this to your shell config (~/.bashrc, ~/.zshrc, etc.):"
-        echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
-        return
-    fi
-    
-    local installed_version
-    installed_version="$($BIN_NAME --version 2>&1 | head -n1 || echo 'unknown')"
-    
-    success "$BIN_NAME installed successfully!"
-    echo ""
-    echo "  Installed: $installed_version"
-    echo "  Location:  $(which $BIN_NAME)"
-    echo ""
-    echo "Run '$BIN_NAME --help' to get started!"
-}
+# Find the binary regardless of archive layout (root file or nested dir)
+BIN_PATH="$(find "$TMP_DIR" -maxdepth 3 -type f -name 'owlsol' | head -n1 || true)"
+if [ -z "${BIN_PATH}" ]; then
+  echo "✗ Binary not found in archive."
+  echo "Archive contents:"
+  tar -tzf "$TMP_DIR/owlsol.tar.gz" || true
+  exit 1
+fi
 
-# Main installation flow
-main() {
-    echo ""
-    echo "🦉 OWLSOL CLI Installer"
-    echo ""
-    
-    detect_platform
-    resolve_version
-    download_and_install
-    verify_installation
-    
-    echo ""
-    success "Installation complete!"
-}
+chmod +x "$BIN_PATH"
 
-main "$@"
+echo "🔧 Installing to: $INSTALL_DIR"
+mkdir -p "$INSTALL_DIR"
+cp "$BIN_PATH" "$INSTALL_DIR/owlsol"
+
+if ! command -v owlsol >/dev/null 2>&1; then
+  if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
+    echo
+    echo "⚠ $INSTALL_DIR not in PATH. Add this to your shell rc:"
+    echo "   export PATH=\"\$PATH:$INSTALL_DIR\""
+  fi
+fi
+
+echo "✅ Installation complete"
+echo "   Run: $INSTALL_DIR/owlsol --version"

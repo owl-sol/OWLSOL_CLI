@@ -1,0 +1,16 @@
+/target
+*.exe
+*.o
+*.so
+*.dll
+*.a
+*.bin
+*.class
+*.pyc
+*.zip
+*.tar
+*.gz
+*.png
+*.jpg
+*.jpeg
+*.pdf

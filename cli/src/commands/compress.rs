@@ -92,7 +92,8 @@ fn parse_algorithm(algo: &str) -> Option<CompressionAlgorithm> {
         "rle" | "runlength" => Some(CompressionAlgorithm::RunLength),
         "hybrid" => Some(CompressionAlgorithm::Hybrid),
         "none" => Some(CompressionAlgorithm::None),
-        "auto" | _ => None,
+        "auto" => None,
+        _ => None,
     }
 }
 

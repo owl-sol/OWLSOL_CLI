@@ -1,4 +1,12 @@
+
 <div align="center">
+
++  <div style="font-size:64px;line-height:1">🦉</div>
++  <br />
++  <sub>Making Solana storage affordable, one byte at a time</sub>
++  <br /><br />
+
+
 
 #### 💡 Why OWLSOL?
 

@@ -21,69 +21,81 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install MUSL tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
-
-      - name: Set up Rust
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build (release)
-        shell: bash
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+
+      - name: Build release binary
         run: |
           set -euxo pipefail
-          cargo build --release -p cli --bin owlsol --target ${{ matrix.target }}
+          cargo build --release --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
 
-      - name: Package artifacts
-        shell: bash
+      - name: Package binary
         run: |
           set -euxo pipefail
-          TAG="nightly"
-          BIN_NAME="owlsol"
-          OUTDIR="dist/${BIN_NAME}-${TAG}-${{ matrix.target }}"
-          mkdir -p "$OUTDIR"
-          cp target/${{ matrix.target }}/release/${BIN_NAME} "$OUTDIR/"
-          # include docs
-          [[ -f README.md ]] && cp README.md "$OUTDIR/" || true
-          [[ -f LICENSE ]] && cp LICENSE "$OUTDIR/" || true
-          # archive
-          mkdir -p dist
-          (cd dist && tar -czf "${BIN_NAME}-${TAG}-${{ matrix.target }}.tar.gz" "${BIN_NAME}-${TAG}-${{ matrix.target }}")
+          mkdir -p artifacts
+          ARCH=${{ matrix.target }}
+          OUTNAME=owlsol-nightly-${ARCH}.tar.gz
+          mkdir -p package
+          cp target/${{ matrix.target }}/release/owlsol package/
+          chmod +x package/owlsol
+          tar -C package -czf "artifacts/${OUTNAME}" owlsol
 
-      - name: Move/update rolling tag (nightly)
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euxo pipefail
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag -f nightly "$GITHUB_SHA"
-          git push origin -f nightly
-
-      - name: Create/Update Nightly Release
-        uses: ncipollo/release-action@v1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag: nightly
-          name: "Nightly build"
+          name: owlsol-nightly-${{ matrix.target }}
+          path: artifacts/*.tar.gz
+
+  release:
+    needs: build-nightly
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -name '*.tar.gz' -exec mv {} release-assets/ \;
+          cd release-assets
+          sha256sum *.tar.gz > SHA256SUMS.txt
+
+      - name: Update nightly tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f nightly
+          git push -f origin nightly
+
+      - name: Create/Update nightly release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Nightly Build"
           body: |
-            Automated nightly build from commit ${{ github.sha }} on branch ${{ github.ref_name }}.
-
-            This release is updated on every push to main and assets are replaced.
-
-            Targets:
-            - x86_64-unknown-linux-musl
-            - aarch64-unknown-linux-musl
-          draft: false
+            **Automated nightly build from main branch**
+            
+            Built from commit: ${{ github.sha }}
+            
+            ### Install (Linux)
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash -s nightly
+            ```
+          files: release-assets/*
           prerelease: true
-          allowUpdates: true
-          replacesArtifacts: true
-          removeArtifacts: true
-          artifactErrorsFailBuild: true
-          artifacts: |
-            dist/owlsol-nightly-*.tar.gz
+          draft: false
+          token: ${{ secrets.GITHUB_TOKEN }}

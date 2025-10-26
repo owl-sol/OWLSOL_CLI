@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "algorithm": "Zstd",
-  "original_size": 187,
-  "compressed_size": 153,
-  "compression_ratio": 0.8181818181818182,
-  "timestamp": 1761487566,
-  "checksum": 3457071466
-}

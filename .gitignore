@@ -24,3 +24,6 @@ decompressed.json
 # Local data/cache/vendor directories
 vendor/
 solana-accounts/
+
+# Scripts directory (development automation only)
+scripts/

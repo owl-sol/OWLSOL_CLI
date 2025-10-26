@@ -7,12 +7,12 @@ use owlsol_solana::SolanaClient;
 use std::fs;
 
 // ...existing code...
-    pub async fn execute(
-        input: String,
-        output: Option<String>,
-        algorithm: String,
-        deploy: bool,
-    ) -> Result<owlsol_core::CompressionResult> {
+pub async fn execute(
+    input: String,
+    output: Option<String>,
+    algorithm: String,
+    deploy: bool,
+) -> Result<owlsol_core::CompressionResult> {
     println!("{}", "🦉 OWLSOL Compression".bright_cyan().bold());
     println!();
 
@@ -82,7 +82,7 @@ use std::fs;
         deploy_to_solana(&result).await?;
     }
 
-        Ok(result)
+    Ok(result)
 }
 
 fn parse_algorithm(algo: &str) -> Option<CompressionAlgorithm> {
@@ -117,11 +117,7 @@ async fn deploy_to_solana(result: &owlsol_core::CompressionResult) -> Result<()>
 
     println!();
     println!("  {} {}", "Wallet:".bright_white(), client.pubkey());
-    println!(
-        "  {} {:.4} SOL",
-        "Balance:".bright_white(),
-        balance_sol
-    );
+    println!("  {} {:.4} SOL", "Balance:".bright_white(), balance_sol);
 
     // Request airdrop if needed
     if balance < 100_000_000 {
@@ -144,11 +140,7 @@ async fn deploy_to_solana(result: &owlsol_core::CompressionResult) -> Result<()>
         "Compressed size:".bright_white(),
         result.data.len()
     );
-    println!(
-        "  {} {:.6} SOL",
-        "Storage rent:".bright_white(),
-        rent_sol
-    );
+    println!("  {} {:.6} SOL", "Storage rent:".bright_white(), rent_sol);
 
     // Calculate savings
     let original_rent = client.calculate_rent(result.metadata.original_size as usize)?;
@@ -160,11 +152,7 @@ async fn deploy_to_solana(result: &owlsol_core::CompressionResult) -> Result<()>
         "Original would cost:".bright_black(),
         original_rent_sol
     );
-    println!(
-        "  {} {:.6} SOL saved!",
-        "💰".bright_green(),
-        savings_sol
-    );
+    println!("  {} {:.6} SOL saved!", "💰".bright_green(), savings_sol);
 
     println!();
     println!(
@@ -175,7 +163,9 @@ async fn deploy_to_solana(result: &owlsol_core::CompressionResult) -> Result<()>
     );
     println!(
         "  {}",
-        "This is a simulation showing potential savings.".bright_black().italic()
+        "This is a simulation showing potential savings."
+            .bright_black()
+            .italic()
     );
 
     Ok(())

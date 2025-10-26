@@ -27,7 +27,7 @@ impl BitWriter {
             self.current_byte |= 1 << (7 - self.bit_pos);
         }
         self.bit_pos += 1;
-        
+
         if self.bit_pos == 8 {
             self.bytes.push(self.current_byte);
             self.current_byte = 0;
@@ -101,15 +101,15 @@ impl<'a> BitReader<'a> {
         if self.byte_pos >= self.bytes.len() {
             return None;
         }
-        
+
         let bit = (self.bytes[self.byte_pos] >> (7 - self.bit_pos)) & 1 == 1;
         self.bit_pos += 1;
-        
+
         if self.bit_pos == 8 {
             self.byte_pos += 1;
             self.bit_pos = 0;
         }
-        
+
         Some(bit)
     }
 
@@ -179,10 +179,10 @@ mod tests {
     fn test_u16_roundtrip() {
         let mut writer = BitWriter::new();
         writer.write_u16(0x1234);
-        
+
         let bytes = writer.into_bytes();
         let mut reader = BitReader::new(&bytes);
-        
+
         assert_eq!(reader.read_u16(), Some(0x1234));
     }
 }

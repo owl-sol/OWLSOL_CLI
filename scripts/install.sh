@@ -196,7 +196,7 @@ main() {
     echo ""
     
     detect_platform
-    get_latest_version
+    resolve_version
     download_and_install
     verify_installation
     

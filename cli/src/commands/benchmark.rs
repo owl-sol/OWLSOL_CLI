@@ -77,11 +77,7 @@ pub async fn execute(input: String, iterations: usize, output: Option<String>) -
     println!();
     println!(
         "  {:<12} {:<15} {:<15} {:<15} {:<10}",
-        "Algorithm",
-        "Compress (μs)",
-        "Decompress (μs)",
-        "Size (bytes)",
-        "Ratio"
+        "Algorithm", "Compress (μs)", "Decompress (μs)", "Size (bytes)", "Ratio"
     );
     println!("  {}", "─".repeat(70).bright_black());
 
@@ -108,12 +104,15 @@ pub async fn execute(input: String, iterations: usize, output: Option<String>) -
         .min_by(|a, b| a.4.partial_cmp(&b.4).unwrap())
         .unwrap();
 
-    println!("  {} {}", "Fastest compression:".bright_green(), best_compress.0);
+    println!(
+        "  {} {}",
+        "Fastest compression:".bright_green(),
+        best_compress.0
+    );
     println!("  {} {}", "Best ratio:".bright_green(), best_ratio.0);
 
     // Calculate throughput
-    let throughput_mb_s = (data.len() as f64 / 1024.0 / 1024.0)
-        / (best_compress.1 / 1_000_000.0);
+    let throughput_mb_s = (data.len() as f64 / 1024.0 / 1024.0) / (best_compress.1 / 1_000_000.0);
 
     println!();
     println!(

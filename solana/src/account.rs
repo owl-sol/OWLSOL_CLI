@@ -20,8 +20,8 @@ impl CompressedAccount {
     }
 
     pub fn savings(&self) -> u64 {
-        let original_rent = self.rent * self.metadata.original_size 
-            / self.metadata.compressed_size.max(1);
+        let original_rent =
+            self.rent * self.metadata.original_size / self.metadata.compressed_size.max(1);
         original_rent.saturating_sub(self.rent)
     }
 

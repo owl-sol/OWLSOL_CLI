@@ -21,8 +21,8 @@ impl Compressor {
     }
 
     fn compress_zstd(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
-        use zstd::stream::encode_all;
         use std::io::Cursor;
+        use zstd::stream::encode_all;
         let compressed = encode_all(Cursor::new(data), 1)
             .map_err(|e| CompressionError::compression_failed(format!("Zstd: {}", e)))?;
         Ok((compressed, CompressionAlgorithm::Zstd))
@@ -75,8 +75,9 @@ impl Compressor {
             };
 
             let checksum = calculate_checksum(&final_data);
-            let metadata = CompressionMetadata::new(final_algo, original_size, final_data.len() as u64)
-                .with_checksum(checksum);
+            let metadata =
+                CompressionMetadata::new(final_algo, original_size, final_data.len() as u64)
+                    .with_checksum(checksum);
 
             return Ok(CompressionResult::new(final_data, metadata));
         }
@@ -117,26 +118,34 @@ impl Compressor {
     }
 
     fn compress_huffman(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
-    let mut codec = HuffmanCodec::new();
-    codec.build_from_data(data)?;
+        let mut codec = HuffmanCodec::new();
+        codec.build_from_data(data)?;
 
-    let encoded = codec.encode(data)?;
-    let tree = codec.serialize_tree()?;
+        let encoded = codec.encode(data)?;
+        let tree = codec.serialize_tree()?;
 
-    // Format: [tree_size(4 bytes)][tree][encoded_data]
-    let tree_size = tree.len() as u32;
-    let mut result = Vec::with_capacity(4 + tree.len() + encoded.len());
-    result.extend_from_slice(&tree_size.to_le_bytes());
-    result.extend_from_slice(&tree);
-    result.extend_from_slice(&encoded);
-    println!("[COMPRESS HUFFMAN] Original len: {}, Compressed len: {}", data.len(), result.len());
-    Ok((result, CompressionAlgorithm::Huffman))
+        // Format: [tree_size(4 bytes)][tree][encoded_data]
+        let tree_size = tree.len() as u32;
+        let mut result = Vec::with_capacity(4 + tree.len() + encoded.len());
+        result.extend_from_slice(&tree_size.to_le_bytes());
+        result.extend_from_slice(&tree);
+        result.extend_from_slice(&encoded);
+        println!(
+            "[COMPRESS HUFFMAN] Original len: {}, Compressed len: {}",
+            data.len(),
+            result.len()
+        );
+        Ok((result, CompressionAlgorithm::Huffman))
     }
 
     fn compress_dictionary(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
-    let compressed = dict_compress(data)?;
-    println!("[COMPRESS DICT] Original len: {}, Compressed len: {}", data.len(), compressed.len());
-    Ok((compressed, CompressionAlgorithm::Dictionary))
+        let compressed = dict_compress(data)?;
+        println!(
+            "[COMPRESS DICT] Original len: {}, Compressed len: {}",
+            data.len(),
+            compressed.len()
+        );
+        Ok((compressed, CompressionAlgorithm::Dictionary))
     }
 
     fn compress_rle(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
@@ -190,7 +199,7 @@ mod tests {
         let compressor = Compressor::new();
         let data = b"hello world hello world";
         let result = compressor.compress(data).unwrap();
-        
+
         assert!(result.metadata.compressed_size <= result.metadata.original_size);
         assert!(result.metadata.validate());
     }
@@ -211,7 +220,7 @@ mod tests {
     #[test]
     fn test_algorithm_selection() {
         let compressor = Compressor::new();
-        
+
         // RLE-friendly data
         let data = vec![b'A'; 1000];
         let result = compressor.compress(&data).unwrap();
@@ -226,7 +235,8 @@ mod tests {
         let result = compressor.compress(&data).unwrap();
         // For random data, either None, Lz4, or Zstd may be chosen depending on output size
         match result.metadata.algorithm {
-            CompressionAlgorithm::None | CompressionAlgorithm::Lz4 | CompressionAlgorithm::Zstd => {}
+            CompressionAlgorithm::None | CompressionAlgorithm::Lz4 | CompressionAlgorithm::Zstd => {
+            }
             other => panic!("Unexpected algorithm for incompressible data: {:?}", other),
         }
     }

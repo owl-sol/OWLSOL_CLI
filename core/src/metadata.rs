@@ -65,10 +65,10 @@ impl CompressionMetadata {
             algorithm: algo,
             original_size: orig,
             compressed_size: comp,
-            compression_ratio: if orig > 0 { 
-                comp as f64 / orig as f64 
-            } else { 
-                0.0 
+            compression_ratio: if orig > 0 {
+                comp as f64 / orig as f64
+            } else {
+                0.0
             },
             timestamp: chrono::Utc::now().timestamp(),
             checksum: 0, // Will be calculated separately
@@ -101,7 +101,7 @@ impl CompressionMetadata {
     }
 
     pub fn validate(&self) -> bool {
-        self.version == COMPRESSION_VERSION 
+        self.version == COMPRESSION_VERSION
             && self.original_size > 0
             && self.compressed_size > 0
             && self.compression_ratio >= 0.0

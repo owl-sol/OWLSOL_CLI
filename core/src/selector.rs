@@ -35,7 +35,7 @@ impl AlgorithmSelector {
 
     pub fn estimate_compression_ratio(&self, analysis: &DataAnalysis) -> f64 {
         let algo = self.select_algorithm(analysis);
-        
+
         match algo {
             CompressionAlgorithm::None => 1.0,
             CompressionAlgorithm::Huffman => {
@@ -85,7 +85,7 @@ mod tests {
     #[test]
     fn test_algorithm_selection() {
         let selector = AlgorithmSelector::new();
-        
+
         // Test with different data characteristics
         let mut analysis = DataAnalysis {
             size: 1000,
@@ -97,14 +97,23 @@ mod tests {
             byte_distribution: Default::default(),
         };
 
-        assert_eq!(selector.select_algorithm(&analysis), CompressionAlgorithm::None);
+        assert_eq!(
+            selector.select_algorithm(&analysis),
+            CompressionAlgorithm::None
+        );
 
         analysis.entropy = 5.0;
         analysis.unique_bytes = 100;
-        assert_eq!(selector.select_algorithm(&analysis), CompressionAlgorithm::Huffman);
+        assert_eq!(
+            selector.select_algorithm(&analysis),
+            CompressionAlgorithm::Huffman
+        );
 
         analysis.max_run_length = 50;
         analysis.avg_run_length = 10.0;
-        assert_eq!(selector.select_algorithm(&analysis), CompressionAlgorithm::RunLength);
+        assert_eq!(
+            selector.select_algorithm(&analysis),
+            CompressionAlgorithm::RunLength
+        );
     }
 }

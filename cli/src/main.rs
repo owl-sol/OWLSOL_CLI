@@ -93,16 +93,35 @@ async fn main() -> anyhow::Result<()> {
             deploy,
             ui,
         } => {
-            let result = compress::execute(input.clone(), output.clone(), algorithm.clone(), deploy).await?;
+            let result =
+                compress::execute(input.clone(), output.clone(), algorithm.clone(), deploy).await?;
             if ui {
                 use ui::ratatui_ui::show_compression_stats;
                 let stats = vec![
-                    ("Algorithm".to_string(), result.metadata.algorithm.as_str().to_string()),
-                    ("Original size".to_string(), result.metadata.original_size.to_string()),
-                    ("Compressed size".to_string(), result.metadata.compressed_size.to_string()),
-                    ("Compression ratio".to_string(), format!("{:.2}%", result.metadata.compression_percentage())),
-                    ("Space saved".to_string(), result.metadata.space_saved().to_string()),
-                    ("Checksum".to_string(), format!("{:08x}", result.metadata.checksum)),
+                    (
+                        "Algorithm".to_string(),
+                        result.metadata.algorithm.as_str().to_string(),
+                    ),
+                    (
+                        "Original size".to_string(),
+                        result.metadata.original_size.to_string(),
+                    ),
+                    (
+                        "Compressed size".to_string(),
+                        result.metadata.compressed_size.to_string(),
+                    ),
+                    (
+                        "Compression ratio".to_string(),
+                        format!("{:.2}%", result.metadata.compression_percentage()),
+                    ),
+                    (
+                        "Space saved".to_string(),
+                        result.metadata.space_saved().to_string(),
+                    ),
+                    (
+                        "Checksum".to_string(),
+                        format!("{:08x}", result.metadata.checksum),
+                    ),
                 ];
                 show_compression_stats(&stats)?;
             }

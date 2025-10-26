@@ -4,7 +4,7 @@ use std::collections::{hash_map::Entry, HashMap};
 const DICT_MARKER: u8 = 0xFF;
 const MIN_MATCH_LEN: usize = 3; // Only match 3+ bytes
 const MAX_MATCH_LEN: usize = 8; // Longer matches
-const MAX_DICT_SIZE: u16 = 256;  // Smaller dictionary
+const MAX_DICT_SIZE: u16 = 256; // Smaller dictionary
 
 pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     if data.is_empty() {
@@ -113,8 +113,14 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
                 match dictionary.get(&id) {
                     Some(sequence) => result.extend_from_slice(sequence),
                     None => {
-                        println!("[DICT DECOMPRESS] Missing dictionary entry for id {} at pos {}", id, pos);
-                        return Err(crate::error::CompressionError::CorruptedData(format!("Missing dictionary entry for id {} at pos {}", id, pos)));
+                        println!(
+                            "[DICT DECOMPRESS] Missing dictionary entry for id {} at pos {}",
+                            id, pos
+                        );
+                        return Err(crate::error::CompressionError::CorruptedData(format!(
+                            "Missing dictionary entry for id {} at pos {}",
+                            id, pos
+                        )));
                     }
                 }
                 pos += 3;
@@ -165,7 +171,7 @@ mod tests {
         println!("Expected: {:?}", data);
         println!("Actual:   {:?}", decompressed);
         assert_eq!(data.to_vec(), decompressed);
-    // Compression may not always be smaller for small or edge cases; only check roundtrip correctness
+        // Compression may not always be smaller for small or edge cases; only check roundtrip correctness
     }
 
     #[test]

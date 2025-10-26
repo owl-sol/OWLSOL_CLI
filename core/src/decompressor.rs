@@ -18,9 +18,7 @@ impl Decompressor {
         }
 
         if metadata.checksum != 0 && !verify_checksum(data, metadata.checksum) {
-            return Err(CompressionError::CorruptedData(
-                "Checksum mismatch".into(),
-            ));
+            return Err(CompressionError::CorruptedData("Checksum mismatch".into()));
         }
 
         let decompressed = match metadata.algorithm {
@@ -54,9 +52,11 @@ impl Decompressor {
         }
 
         let tree_size = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
-        
+
         if data.len() < 4 + tree_size {
-            return Err(CompressionError::decompression_failed("Truncated tree data"));
+            return Err(CompressionError::decompression_failed(
+                "Truncated tree data",
+            ));
         }
 
         let mut codec = HuffmanCodec::new();
@@ -106,7 +106,9 @@ mod tests {
         let result = compressor
             .compress_with_algorithm(data, Some(CompressionAlgorithm::Huffman))
             .unwrap();
-        let decompressed = decompressor.decompress(&result.data, &result.metadata).unwrap();
+        let decompressed = decompressor
+            .decompress(&result.data, &result.metadata)
+            .unwrap();
 
         assert_eq!(data, decompressed.as_slice());
     }
@@ -120,7 +122,9 @@ mod tests {
         let result = compressor
             .compress_with_algorithm(&data, Some(CompressionAlgorithm::RunLength))
             .unwrap();
-        let decompressed = decompressor.decompress(&result.data, &result.metadata).unwrap();
+        let decompressed = decompressor
+            .decompress(&result.data, &result.metadata)
+            .unwrap();
 
         assert_eq!(data, decompressed);
     }
@@ -134,7 +138,9 @@ mod tests {
         let result = compressor
             .compress_with_algorithm(data, Some(CompressionAlgorithm::Dictionary))
             .unwrap();
-        let decompressed = decompressor.decompress(&result.data, &result.metadata).unwrap();
+        let decompressed = decompressor
+            .decompress(&result.data, &result.metadata)
+            .unwrap();
 
         assert_eq!(data, decompressed.as_slice());
     }

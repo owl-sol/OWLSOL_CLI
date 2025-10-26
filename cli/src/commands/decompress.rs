@@ -6,10 +6,7 @@ use owlsol_core::{CompressionMetadata, Decompressor};
 use std::fs;
 
 pub async fn execute(input: String, output: Option<String>, from_solana: bool) -> Result<()> {
-    println!(
-        "{}",
-        "🦉 OWLSOL Decompression".bright_cyan().bold()
-    );
+    println!("{}", "🦉 OWLSOL Decompression".bright_cyan().bold());
     println!();
 
     if from_solana {
@@ -44,10 +41,7 @@ pub async fn execute(input: String, output: Option<String>, from_solana: bool) -
         .with_context(|| format!("Failed to read metadata: {}", metadata_path))?;
     let metadata: CompressionMetadata = serde_json::from_str(&metadata_json)?;
 
-    spinner.finish_with_message(format!(
-        "✓ Read {} bytes (compressed)",
-        data.len()
-    ));
+    spinner.finish_with_message(format!("✓ Read {} bytes (compressed)", data.len()));
 
     // Decompress
     let spinner = ProgressBar::new_spinner();
@@ -79,10 +73,10 @@ pub async fn execute(input: String, output: Option<String>, from_solana: bool) -
     if let Some(output_path) = output {
         fs::write(&output_path, &decompressed)
             .with_context(|| format!("Failed to write: {}", output_path))?;
-    println!();
-    println!("  ✓ Saved to {}", output_path.bright_cyan());
-    let metadata_path = format!("{}.meta.json", input);
-    println!("  Metadata: {}", metadata_path.bright_black());
+        println!();
+        println!("  ✓ Saved to {}", output_path.bright_cyan());
+        let metadata_path = format!("{}.meta.json", input);
+        println!("  Metadata: {}", metadata_path.bright_black());
     }
 
     Ok(())

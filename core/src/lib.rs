@@ -1,5 +1,5 @@
 //! OWLSOL Core - Compression Engine
-//! 
+//!
 //! Provides hybrid compression algorithms optimized for Solana account storage.
 
 pub mod algorithms;
@@ -19,8 +19,8 @@ pub use metadata::{CompressionAlgorithm, CompressionMetadata, CompressionResult}
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        Compressor, Decompressor, CompressionError, CompressionMetadata,
-        CompressionAlgorithm, CompressionResult, Result,
+        CompressionAlgorithm, CompressionError, CompressionMetadata, CompressionResult, Compressor,
+        Decompressor, Result,
     };
 }
 

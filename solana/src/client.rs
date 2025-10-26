@@ -15,14 +15,11 @@ pub struct SolanaClient {
 
 impl SolanaClient {
     pub fn new<P: AsRef<Path>>(rpc_url: &str, keypair_path: P) -> Result<Self> {
-        let rpc = RpcClient::new_with_commitment(
-            rpc_url.to_string(),
-            CommitmentConfig::confirmed(),
-        );
+        let rpc =
+            RpcClient::new_with_commitment(rpc_url.to_string(), CommitmentConfig::confirmed());
 
         let keypair_bytes = std::fs::read(keypair_path)?;
-        let payer = Keypair::from_bytes(&keypair_bytes)
-            .map_err(|_| SolanaError::InvalidKeypair)?;
+        let payer = Keypair::from_bytes(&keypair_bytes).map_err(|_| SolanaError::InvalidKeypair)?;
 
         Ok(Self { rpc, payer })
     }

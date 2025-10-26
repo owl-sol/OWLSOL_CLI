@@ -1,5 +1,7 @@
 use colored::Colorize;
-use owlsol_core::{analyzer::DataAnalysis, CompressionAlgorithm, CompressionMetadata, CompressionResult};
+use owlsol_core::{
+    analyzer::DataAnalysis, CompressionAlgorithm, CompressionMetadata, CompressionResult,
+};
 use std::time::Duration;
 
 pub fn print_compression_result(result: &CompressionResult, elapsed: Duration) {
@@ -40,11 +42,7 @@ pub fn print_compression_result(result: &CompressionResult, elapsed: Duration) {
     );
 
     if meta.checksum != 0 {
-        println!(
-            "    {} {:08x}",
-            "Checksum:".bright_black(),
-            meta.checksum
-        );
+        println!("    {} {:08x}", "Checksum:".bright_black(), meta.checksum);
     }
 }
 
@@ -73,15 +71,8 @@ pub fn print_decompression_result(
 }
 
 pub fn print_algorithm_stats(algo: &CompressionAlgorithm, meta: &CompressionMetadata) {
-    println!(
-        "  {} {}",
-        "▸".bright_blue(),
-        algo.as_str().bright_yellow()
-    );
-    println!(
-        "    Compressed: {} bytes",
-        meta.compressed_size
-    );
+    println!("  {} {}", "▸".bright_blue(), algo.as_str().bright_yellow());
+    println!("    Compressed: {} bytes", meta.compressed_size);
     println!("    Ratio: {:.2}%", meta.compression_percentage());
     println!("    Savings: {} bytes", meta.space_saved());
     println!();
@@ -89,11 +80,7 @@ pub fn print_algorithm_stats(algo: &CompressionAlgorithm, meta: &CompressionMeta
 
 pub fn print_data_analysis(analysis: &DataAnalysis) {
     println!("{}", "  Data Analysis:".bright_yellow().bold());
-    println!(
-        "    {} {:.2}",
-        "Entropy:".bright_white(),
-        analysis.entropy
-    );
+    println!("    {} {:.2}", "Entropy:".bright_white(), analysis.entropy);
     println!(
         "    {} {}",
         "Unique bytes:".bright_white(),
@@ -117,7 +104,7 @@ pub fn print_data_analysis(analysis: &DataAnalysis) {
 
     println!();
     println!("    {} Characteristics:", "Characteristics:".bright_white());
-    
+
     if analysis.is_random() {
         println!("      • {} Random/encrypted data", "⚠".bright_yellow());
     }

@@ -82,7 +82,7 @@ impl HuffmanCodec {
 
         // Build Huffman tree
         self.tree = Some(Self::build_tree(freqs)?);
-        
+
         // Generate codes from tree
         self.codes.clear();
         if let Some(ref tree) = self.tree {
@@ -94,7 +94,7 @@ impl HuffmanCodec {
 
     fn build_tree(freqs: HashMap<u8, u64>) -> Result<Box<HuffmanNode>> {
         let mut heap = BinaryHeap::new();
-        
+
         for (byte, freq) in freqs {
             heap.push(HuffmanNode::leaf(byte, freq));
         }
@@ -118,11 +118,7 @@ impl HuffmanCodec {
         Ok(Box::new(heap.pop().unwrap()))
     }
 
-    fn generate_codes(
-        node: &HuffmanNode,
-        prefix: Vec<bool>,
-        codes: &mut HashMap<u8, Vec<bool>>,
-    ) {
+    fn generate_codes(node: &HuffmanNode, prefix: Vec<bool>, codes: &mut HashMap<u8, Vec<bool>>) {
         if node.is_leaf() {
             if let Some(value) = node.value {
                 codes.insert(value, prefix);
@@ -143,12 +139,12 @@ impl HuffmanCodec {
 
     pub fn encode(&self, data: &[u8]) -> Result<Vec<u8>> {
         let mut writer = BitWriter::with_capacity(data.len() / 2);
-        
+
         for &byte in data {
             let code = self.codes.get(&byte).ok_or_else(|| {
                 CompressionError::compression_failed(format!("No code for byte {}", byte))
             })?;
-            
+
             writer.write_bits(code);
         }
 
@@ -156,9 +152,10 @@ impl HuffmanCodec {
     }
 
     pub fn decode(&self, encoded: &[u8], original_len: usize) -> Result<Vec<u8>> {
-        let tree = self.tree.as_ref().ok_or_else(|| {
-            CompressionError::decompression_failed("No Huffman tree available")
-        })?;
+        let tree = self
+            .tree
+            .as_ref()
+            .ok_or_else(|| CompressionError::decompression_failed("No Huffman tree available"))?;
 
         let mut reader = BitReader::new(encoded);
         let mut decoded = Vec::with_capacity(original_len);
@@ -180,18 +177,27 @@ impl HuffmanCodec {
                             current.right.as_ref()
                         } else {
                             current.left.as_ref()
-                        }.ok_or_else(|| {
+                        }
+                        .ok_or_else(|| {
                             CompressionError::decompression_failed("Invalid tree structure")
                         })?;
                     }
                     None => {
-                        println!("[HUFFMAN DECODE] Unexpected end of data at decoded len {}", decoded.len());
-                        return Err(CompressionError::decompression_failed("Unexpected end of data"));
+                        println!(
+                            "[HUFFMAN DECODE] Unexpected end of data at decoded len {}",
+                            decoded.len()
+                        );
+                        return Err(CompressionError::decompression_failed(
+                            "Unexpected end of data",
+                        ));
                     }
                 }
             }
             if decoded.len() == start_len {
-                println!("[HUFFMAN DECODE] No progress at decoded len {}", decoded.len());
+                println!(
+                    "[HUFFMAN DECODE] No progress at decoded len {}",
+                    decoded.len()
+                );
                 break;
             }
         }
@@ -200,9 +206,10 @@ impl HuffmanCodec {
     }
 
     pub fn serialize_tree(&self) -> Result<Vec<u8>> {
-        let tree = self.tree.as_ref().ok_or_else(|| {
-            CompressionError::compression_failed("No tree to serialize")
-        })?;
+        let tree = self
+            .tree
+            .as_ref()
+            .ok_or_else(|| CompressionError::compression_failed("No tree to serialize"))?;
 
         let mut bytes = Vec::new();
         Self::serialize_node(tree, &mut bytes);
@@ -238,13 +245,17 @@ impl HuffmanCodec {
 
     fn deserialize_node(data: &[u8], pos: &mut usize) -> Result<HuffmanNode> {
         if *pos >= data.len() {
-            return Err(CompressionError::decompression_failed("Incomplete tree data"));
+            return Err(CompressionError::decompression_failed(
+                "Incomplete tree data",
+            ));
         }
         let is_leaf = data[*pos];
         *pos += 1;
         if is_leaf == 1 {
             if *pos >= data.len() {
-                return Err(CompressionError::decompression_failed("Incomplete leaf node"));
+                return Err(CompressionError::decompression_failed(
+                    "Incomplete leaf node",
+                ));
             }
             let value = data[*pos];
             *pos += 1;
@@ -310,7 +321,7 @@ mod tests {
         codec.build_from_data(data).unwrap();
 
         let tree_data = codec.serialize_tree().unwrap();
-        
+
         let mut codec2 = HuffmanCodec::new();
         codec2.deserialize_tree(&tree_data).unwrap();
 

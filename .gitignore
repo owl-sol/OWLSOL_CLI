@@ -20,3 +20,7 @@ test-nft.json
 test-nft.json.owlsol
 test-nft.json.owlsol.meta.json
 decompressed.json
+
+# Local data/cache/vendor directories
+vendor/
+solana-accounts/

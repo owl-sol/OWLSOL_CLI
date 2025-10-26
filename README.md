@@ -524,7 +524,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub Issues**: [Report a bug](https://github.com/owl-sol/OWLSOL_CLI/issues)
 - **Discussions**: [Ask questions](https://github.com/owl-sol/OWLSOL_CLI/discussions)
-- **Twitter**: [@owlsol](https://twitter.com/owlsol)
+- **Twitter**: [@owlsol](https://twitter.com/owlsol_)
 - **Discord**: [Join our community](https://discord.gg/owlsol)
 
 ---

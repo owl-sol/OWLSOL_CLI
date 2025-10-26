@@ -8,8 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  build-nightly:
-    name: Nightly build and rolling release
+  linux-build:
+    name: Linux (musl) builds
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -18,8 +18,7 @@ jobs:
           - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-musl
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -29,47 +28,74 @@ jobs:
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
 
-      - name: Build release binary
-        run: |
-          set -euxo pipefail
-          cross build --release --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
+      - name: Build
+        run: cross build --release --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
 
-      - name: Package binary
+      - name: Package
         run: |
-          set -euxo pipefail
-          mkdir -p artifacts
-          ARCH=${{ matrix.target }}
-          OUTNAME=owlsol-nightly-${ARCH}.tar.gz
-          mkdir -p package
-          cp target/${{ matrix.target }}/release/owlsol package/
-          chmod +x package/owlsol
-          tar -C package -czf "artifacts/${OUTNAME}" owlsol
+          mkdir -p artifacts pkg
+          cp target/${{ matrix.target }}/release/owlsol pkg/owlsol
+          chmod +x pkg/owlsol
+          tar -C pkg -czf artifacts/owlsol-nightly-${{ matrix.target }}.tar.gz owlsol
 
-      - name: Upload artifact
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: owlsol-nightly-${{ matrix.target }}
+          path: artifacts/*.tar.gz
+
+  mac-build:
+    name: macOS builds
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-13
+            target: x86_64-apple-darwin
+          - runner: macos-14
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --manifest-path cli/Cargo.toml --target ${{ matrix.target }}
+
+      - name: Package
+        run: |
+          mkdir -p artifacts pkg
+          cp target/${{ matrix.target }}/release/owlsol pkg/owlsol
+          chmod +x pkg/owlsol
+          tar -C pkg -czf artifacts/owlsol-nightly-${{ matrix.target }}.tar.gz owlsol
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: owlsol-nightly-${{ matrix.target }}
           path: artifacts/*.tar.gz
 
   release:
-    needs: build-nightly
+    name: Nightly release
+    needs: [linux-build, mac-build]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Flatten artifacts
+      - name: Prepare release assets
         run: |
           mkdir -p release-assets
           find artifacts -type f -name '*.tar.gz' -exec mv {} release-assets/ \;
-          cd release-assets
-          sha256sum *.tar.gz > SHA256SUMS.txt
+          (cd release-assets && sha256sum *.tar.gz > SHA256SUMS.txt)
 
       - name: Update nightly tag
         run: |
@@ -82,17 +108,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
-          name: "Nightly Build"
+          name: Nightly Build
           body: |
-            **Automated nightly build from main branch**
-            
-            Built from commit: ${{ github.sha }}
-            
-            ### Install (Linux)
-            ```bash
-            curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash -s nightly
-            ```
+            Automated nightly build from main
+            Commit: ${{ github.sha }}
           files: release-assets/*
           prerelease: true
           draft: false
-          token: ${{ secrets.GITHUB_TOKEN }}

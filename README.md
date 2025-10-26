@@ -75,34 +75,29 @@ OWLSOL-CLI is a high-performance, production-ready compression toolkit specifica
 
 ## 🚀 Quick Start
 
-### Installation
+# OWLSOL CLI
 
-#### For End Users (Recommended)
+## Install
 
-**One-line installer (Linux/macOS):**
+- Quick (Linux/macOS):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash
 ```
 
-**Manual download:**
-1. Go to [Releases](https://github.com/owl-sol/OWLSOL_CLI/releases/latest)
-2. Download the appropriate archive for your platform:
-   - Linux (x86_64): `owlsol-vX.X.X-x86_64-unknown-linux-musl.tar.gz`
-   - Linux (ARM64): `owlsol-vX.X.X-aarch64-unknown-linux-musl.tar.gz`
-   - macOS (Intel): `owlsol-vX.X.X-x86_64-apple-darwin.tar.gz`
-   - macOS (Apple Silicon): `owlsol-vX.X.X-aarch64-apple-darwin.tar.gz`
-   - Windows: `owlsol-vX.X.X-x86_64-pc-windows-msvc.zip`
-3. Extract and move the binary to your PATH:
-   ```bash
-   tar -xzf owlsol-*.tar.gz
-   sudo mv owlsol-*/owlsol /usr/local/bin/
-   ```
+- Manual:
+  - Download a tarball from the Nightly release matching your platform:
+    - Linux: x86_64-unknown-linux-musl, aarch64-unknown-linux-musl
+    - macOS: x86_64-apple-darwin, aarch64-apple-darwin
+  - Extract and place `owlsol` in your PATH.
 
-**Verify installation:**
+## Usage
+
 ```bash
-owlsol --version
 owlsol --help
-```
+owlsol compress file.txt
+owlsol decompress file.txt.owlsol
+owlsol --version
+
 
 #### For Developers
 

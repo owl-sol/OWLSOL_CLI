@@ -1,6 +1,14 @@
 <div align="center">
 
-# 🦉 OWLSOL-CLI
+#### 💡 Why OWLSOL?
+
+- **💰 Save Money**: Reduce Solana account rent by 60-80%
+- **🧠 Smart Selection**: Automatically chooses the best compression algorithm
+- **⚡ Blazing Fast**: Written in Rust for maximum performance
+- **🔒 Data Integrity**: Built-in checksums and validation
+- **🎯 Solana-Native**: Purpose-built for blockchain data patterns
+- **🔄 Multi-Algorithm**: Custom + industry-standard algorithms (LZ4/Zstd)
+- **📦 Minimal Dependencies**: Core library stays lean and efficientL-CLI
 
 ### **Intelligent Compression for Solana Account Data**
 
@@ -28,7 +36,8 @@ OWLSOL-CLI is a high-performance, production-ready compression toolkit specifica
 - **⚡ Blazing Fast**: Written in Rust for maximum performance
 - **🔒 Data Integrity**: Built-in checksums and validation
 - **🎯 Solana-Native**: Purpose-built for blockchain data patterns
-- **📦 Zero Dependencies**: Core library has minimal external dependencies
+- **� Dual-Layer Approach**: Combines custom algorithms + Solana-compatible compression (LZ4/Zstd)
+- **�📦 Zero Dependencies**: Core library has minimal external dependencies
 
 ---
 
@@ -36,14 +45,21 @@ OWLSOL-CLI is a high-performance, production-ready compression toolkit specifica
 
 ### 🎨 **Multiple Compression Algorithms**
 
+#### Custom Blockchain-Optimized Layer
 | Algorithm | Best For | Typical Ratio | Speed |
 |-----------|----------|---------------|-------|
 | **Huffman** | Text, JSON, varied symbols | 40-60% | ⚡⚡⚡ Fast |
 | **Dictionary** | Repeated patterns, structured data | 50-70% | ⚡⚡ Medium |
 | **RLE** | Long runs, simple repetition | 70-90% | ⚡⚡⚡⚡ Fastest |
-| **LZ4** | General purpose, balanced | 45-65% | ⚡⚡⚡ Fast |
+
+#### Solana-Compatible Layer
+| Algorithm | Best For | Typical Ratio | Speed |
+|-----------|----------|---------------|-------|
+| **LZ4** | General purpose, balanced | 45-65% | ⚡⚡⚡⚡ Ultra-fast |
 | **Zstd** | Maximum compression | 55-75% | ⚡⚡ Medium |
 | **Hybrid** | Mixed data types | Best of all | ⚡⚡ Medium |
+
+> 💡 **Smart Selection**: OWLSOL automatically picks the optimal algorithm based on data analysis
 
 ### 🔥 **Core Capabilities**
 
@@ -61,6 +77,36 @@ OWLSOL-CLI is a high-performance, production-ready compression toolkit specifica
 
 ### Installation
 
+#### For End Users (Recommended)
+
+**One-line installer (Linux/macOS):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash
+```
+
+**Manual download:**
+1. Go to [Releases](https://github.com/owl-sol/OWLSOL_CLI/releases/latest)
+2. Download the appropriate archive for your platform:
+   - Linux (x86_64): `owlsol-vX.X.X-x86_64-unknown-linux-musl.tar.gz`
+   - Linux (ARM64): `owlsol-vX.X.X-aarch64-unknown-linux-musl.tar.gz`
+   - macOS (Intel): `owlsol-vX.X.X-x86_64-apple-darwin.tar.gz`
+   - macOS (Apple Silicon): `owlsol-vX.X.X-aarch64-apple-darwin.tar.gz`
+   - Windows: `owlsol-vX.X.X-x86_64-pc-windows-msvc.zip`
+3. Extract and move the binary to your PATH:
+   ```bash
+   tar -xzf owlsol-*.tar.gz
+   sudo mv owlsol-*/owlsol /usr/local/bin/
+   ```
+
+**Verify installation:**
+```bash
+owlsol --version
+owlsol --help
+```
+
+#### For Developers
+
+**From source:**
 ```bash
 # Clone the repository
 git clone https://github.com/owl-sol/OWLSOL_CLI.git
@@ -71,6 +117,9 @@ cargo build --release
 
 # Run the CLI
 ./target/release/owlsol --help
+
+# Or install to cargo bin
+cargo install --path cli
 ```
 
 ### Basic Usage
@@ -147,8 +196,16 @@ owlsol benchmark -i data.json -n 100
 │  └───────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │  Algorithms                                           │  │
-│  │  • Huffman  • Dictionary  • RLE  • LZ4  • Zstd       │  │
+│  │  Custom Algorithms Layer                              │  │
+│  │  • Huffman  • Dictionary  • RLE                       │  │
+│  │  (OWLSOL-optimized for blockchain data)               │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Industry-Standard Compression Layer                  │  │
+│  │  • LZ4 (Facebook's fast compression)                  │  │
+│  │  • Zstd (Facebook's high-ratio compression)           │  │
+│  │  ⚡ Same algorithms used by Solana internally         │  │
 │  └───────────────────────────────────────────────────────┘  │
 │                                                              │
 │  ┌───────────────────────────────────────────────────────┐  │
@@ -164,6 +221,7 @@ owlsol benchmark -i data.json -n 100
 │  • RPC client wrapper                                        │
 │  • Cost calculation                                          │
 │  • Devnet deployment                                         │
+│  • Compatible with Solana's native compression              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -207,11 +265,11 @@ owlsol-cli/
 
 ## 🎯 Algorithm Selection Logic
 
-OWLSOL uses intelligent heuristics to automatically select the best compression algorithm:
+OWLSOL uses intelligent heuristics to automatically select the best compression algorithm from both layers:
 
 ```rust
 ┌──────────────────────────────────────────────────────┐
-│              Algorithm Decision Tree                  │
+│         Dual-Layer Algorithm Decision Tree            │
 └──────────────────────────────────────────────────────┘
 
 Is entropy > 7.5?
@@ -220,18 +278,28 @@ Is entropy > 7.5?
     └─ NO → Continue analysis
            │
            ├─ Has many repeated sequences? (>5% of data)
-           │  └─ YES → DICTIONARY
+           │  └─ YES → DICTIONARY (Custom Layer)
            │
            ├─ Has long runs? (max_run > 10 OR avg_run > 3)
-           │  └─ YES → RLE
+           │  └─ YES → RLE (Custom Layer)
            │
            ├─ Text-like? (unique_bytes < 128)
-           │  └─ YES → HUFFMAN
+           │  └─ YES → HUFFMAN (Custom Layer)
+           │
+           ├─ Need maximum speed?
+           │  └─ YES → LZ4 (Solana-Compatible Layer) ⚡
+           │
+           ├─ Need maximum compression?
+           │  └─ YES → ZSTD (Solana-Compatible Layer) 🗜️
            │
            ├─ Mixed patterns?
            │  └─ YES → HYBRID (try all, pick best)
            │
-           └─ Default → LZ4 (balanced performance)
+           └─ Default → LZ4 (Solana-Compatible Layer)
+
+Legend:
+  Custom Layer          - Optimized for blockchain data patterns
+  Solana-Compatible     - Same as Solana internal compression
 ```
 
 ---

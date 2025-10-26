@@ -25,5 +25,6 @@ decompressed.json
 vendor/
 solana-accounts/
 
-# Scripts directory (development automation only)
-scripts/
+# Development scripts (keep install.sh tracked)
+scripts/*
+!scripts/install.sh

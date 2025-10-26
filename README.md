@@ -1,14 +1,7 @@
 
 <div align="center">
 
-+  <div style="font-size:64px;line-height:1">🦉</div>
-+  <br />
-+  <sub>Making Solana storage affordable, one byte at a time</sub>
-+  <br /><br />
-
-
-
-#### 💡 Why OWLSOL?
+#### 🦉 Why OWLSOL?
 
 - **💰 Save Money**: Reduce Solana account rent by 60-80%
 - **🧠 Smart Selection**: Automatically chooses the best compression algorithm

@@ -1,12 +1,13 @@
 
 <div align="center">
+
 #### 🦉 Why OWLSOL?
 
 - **💰 Save Money**: Reduce Solana account rent by 60-80%
 - **🧠 Smart Selection**: Automatically chooses the best compression algorithm
 - **⚡ Blazing Fast**: Written in Rust for maximum performance
 - **🔒 Data Integrity**: Built-in checksums and validation
-- **🎯 Solana-Native**: Purpose-built for blockchain data patterns
+- **🎯 Solana-Native**: Purpose-built for blockchain data pattern
 - **🔄 Multi-Algorithm**: Custom + industry-standard algorithms (LZ4/Zstd)
 - **📦 Minimal Dependencies**: Core library stays lean and efficientL-CLI
 

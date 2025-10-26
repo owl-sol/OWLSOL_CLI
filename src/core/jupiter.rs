@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
+use serde_json::json;
 
 /// Helper to deserialize u64 that may be encoded as a JSON string or number
 fn de_u64_string_or_number<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
@@ -23,48 +24,15 @@ where
     }
 }
 
-/// Jupiter quote response (subset we need)
-#[derive(Debug, Serialize, Deserialize)]
-pub struct QuoteResponse {
-    #[serde(rename = "inputMint")]
-    pub input_mint: String,
-
-    #[serde(rename = "inAmount")]
-    pub in_amount: String,
-
-    #[serde(rename = "outputMint")]
-    pub output_mint: String,
-
-    #[serde(rename = "outAmount", deserialize_with = "de_u64_string_or_number")]
-    pub out_amount: u64,
-
-    #[serde(
-        rename = "otherAmountThreshold",
-        deserialize_with = "de_u64_string_or_number"
-    )]
-    pub other_amount_threshold: u64,
-
-    #[serde(rename = "swapMode")]
-    pub swap_mode: String,
-
-    #[serde(rename = "slippageBps")]
-    pub slippage_bps: u16,
-
-    #[serde(rename = "priceImpactPct")]
-    pub price_impact_pct: String,
-
-    #[serde(default)]
-    pub routes_count: Option<usize>,
-}
-
-/// Jupiter swap transaction response
+/// Ultra API order response
 #[derive(Debug, Deserialize)]
-pub struct SwapResponse {
+pub struct UltraOrderResponse {
     #[serde(rename = "swapTransaction")]
     pub swap_transaction: String,
-
-    #[serde(rename = "lastValidBlockHeight")]
-    pub last_valid_block_height: Option<u64>,
+    #[serde(rename = "error")]
+    pub error: Option<String>,
+    #[serde(rename = "message")]
+    pub message: Option<String>,
 }
 
 /// Get token mint address by symbol
@@ -81,80 +49,53 @@ pub fn get_token_mint(symbol: &str) -> Result<Pubkey> {
     Pubkey::from_str(mint_str).context("Invalid mint address")
 }
 
-/// Get quote from Jupiter API
-pub async fn get_quote(input_mint: &Pubkey, output_mint: &Pubkey, amount: u64) -> Result<QuoteResponse> {
-    let url = format!(
-        "https://quote-api.jup.ag/v6/quote?inputMint={}&outputMint={}&amount={}&slippageBps=50",
-        input_mint, output_mint, amount
-    );
-
+/// Get swap transaction from Jupiter Ultra API
+pub async fn ultra_swap_order(
+    input_mint: &Pubkey,
+    output_mint: &Pubkey,
+    amount: u64,
+    user_public_key: &Pubkey,
+) -> Result<UltraOrderResponse> {
+    let url = "https://lite-api.jup.ag/ultra/v1/order";
     let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .context("Failed to fetch quote from Jupiter")?;
+    let req_body = json!({
+        "inputMint": input_mint.to_string(),
+        "outputMint": output_mint.to_string(),
+        "amount": amount.to_string(),
+        "userPublicKey": user_public_key.to_string(),
+        "swapMode": "ExactIn",
+        "slippageBps": 50,
+        "feeBps": 0,
+        "asLegacyTransaction": false,
+        "wrapAndUnwrapSol": true,
+        "dynamicComputeUnitLimit": true,
+        "useSharedAccounts": false,
+        "onlyDirectRoutes": false,
+        "enableDexes": [],
+        "disableDexes": [],
+        "maxAccounts": 32
+    });
 
-    if !response.status().is_success() {
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        anyhow::bail!("Jupiter API error: {}", error_text);
-    }
-
-    let quote: QuoteResponse = response
-        .json()
-        .await
-        .context("Failed to parse Jupiter quote response")?;
-
-    Ok(quote)
-}
-
-/// Get swap transaction from Jupiter API
-pub async fn get_swap_transaction(quote: &QuoteResponse, user_public_key: &Pubkey) -> Result<SwapResponse> {
-    let url = "https://quote-api.jup.ag/v6/swap";
-
-    #[derive(Serialize)]
-    struct SwapRequest {
-        #[serde(rename = "quoteResponse")]
-        quote_response: serde_json::Value,
-        #[serde(rename = "userPublicKey")]
-        user_public_key: String,
-        #[serde(rename = "wrapAndUnwrapSol")]
-        wrap_and_unwrap_sol: bool,
-    }
-
-    let quote_json = serde_json::to_value(quote).context("Failed to serialize quote")?;
-
-    let request = SwapRequest {
-        quote_response: quote_json,
-        user_public_key: user_public_key.to_string(),
-        wrap_and_unwrap_sol: true,
-    };
-
-    let client = reqwest::Client::new();
     let response = client
         .post(url)
-        .json(&request)
+        .json(&req_body)
         .send()
         .await
-        .context("Failed to get swap transaction from Jupiter")?;
+        .context("Failed to fetch Ultra swap order from Jupiter")?;
 
-    if !response.status().is_success() {
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        anyhow::bail!("Jupiter swap API error: {}", error_text);
+    let status = response.status();
+    let resp_text = response.text().await.context("Failed to read Ultra API response")?;
+    if !status.is_success() {
+        anyhow::bail!("Ultra API error: {}", resp_text);
     }
 
-    let swap_response: SwapResponse = response
-        .json()
-        .await
-        .context("Failed to parse Jupiter swap response")?;
-
-    Ok(swap_response)
+    let order: UltraOrderResponse = serde_json::from_str(&resp_text)
+        .context("Failed to parse Ultra API order response")?;
+    if order.swap_transaction.is_empty() {
+        let msg = order.message.unwrap_or_else(|| "Unknown error".to_string());
+        anyhow::bail!("Ultra API error: {}", msg);
+    }
+    Ok(order)
 }
 
 #[cfg(test)]

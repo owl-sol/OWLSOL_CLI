@@ -2561,6 +2561,7 @@ dependencies = [
  "bincode",
  "bs58",
  "crossterm",
+ "futures",
  "ratatui",
  "reqwest",
  "serde",

@@ -40,4 +40,11 @@ impl NetworkConfig {
             rpc_url: "https://api.devnet.solana.com".to_string(),
         }
     }
+
+    pub fn testnet() -> Self {
+        Self {
+            name: "testnet".to_string(),
+            rpc_url: "https://api.testnet.solana.com".to_string(),
+        }
+    }
 }

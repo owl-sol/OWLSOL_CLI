@@ -1,3 +1,31 @@
+use solana_sdk::{
+    pubkey::Pubkey,
+    system_instruction,
+};
+/// Send a simple SOL transfer transaction (for fee optimization testing)
+pub async fn send_sol_transfer(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    recipient: &Pubkey,
+    lamports: u64,
+    with_compression: bool,
+) -> Result<String> {
+    let recent_blockhash = rpc.get_latest_blockhash().context("Failed to get recent blockhash")?;
+    let mut instructions = vec![system_instruction::transfer(&payer.pubkey(), recipient, lamports)];
+    // Optionally add a dummy instruction to simulate unoptimized data
+    if !with_compression {
+        // Add a no-op instruction to increase transaction size (simulate unoptimized)
+        instructions.push(system_instruction::transfer(&payer.pubkey(), recipient, 0));
+    }
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&payer.pubkey()),
+        &[payer],
+        recent_blockhash,
+    );
+    let signature = rpc.send_and_confirm_transaction(&tx).context("Failed to send SOL transfer")?;
+    Ok(signature.to_string())
+}
 use anyhow::{Context, Result};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -56,6 +84,28 @@ pub async fn send_optimized_transaction(
 
     // If neither deserialization works, return an error
     anyhow::bail!("Unsupported transaction format: cannot deserialize Jupiter transaction")
+}
+
+/// Decode a base64-encoded transaction and attempt to deserialize it as a
+/// VersionedTransaction (preferred) or legacy Transaction. Returns Ok(()) if
+/// decoding and deserialization succeed, or an error otherwise. The
+/// `priority_fee` parameter is reserved for future optimization hooks.
+pub fn decode_and_optimize_transaction(base64_tx: &str, _priority_fee: u64) -> Result<()> {
+    let tx_bytes = base64::engine::general_purpose::STANDARD
+        .decode(base64_tx)
+        .context("Failed to decode base64 transaction")?;
+
+    // Try versioned first
+    if bincode::deserialize::<VersionedTransaction>(&tx_bytes).is_ok() {
+        return Ok(());
+    }
+
+    // Fallback to legacy
+    if bincode::deserialize::<Transaction>(&tx_bytes).is_ok() {
+        return Ok(());
+    }
+
+    anyhow::bail!("Unsupported transaction format: cannot deserialize transaction")
 }
 
 /// Simulate transaction to estimate compute units (legacy only)

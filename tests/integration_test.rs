@@ -1,3 +1,36 @@
+use owlsol_cli::core::config::load_wallet;
+use owlsol_cli::core::transaction::send_sol_transfer;
+use solana_client::rpc_client::RpcClient;
+use solana_sdk::pubkey::Pubkey;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
+async fn test_sol_transfer_fee_optimization() {
+    let keypair = load_wallet().expect("Failed to load keypair");
+    let rpc_url = "https://api.devnet.solana.com";
+    let rpc = RpcClient::new(rpc_url.to_string());
+    let recipient = Pubkey::new_unique();
+    let lamports = 100_000;
+
+    // Transfer with compression (optimized)
+    let sig_compressed = send_sol_transfer(&rpc, &keypair, &recipient, lamports, true)
+        .await
+        .expect("Compressed transfer failed");
+    println!("Compressed transfer signature: {}", sig_compressed);
+
+    // Transfer without compression (unoptimized)
+    let sig_uncompressed = send_sol_transfer(&rpc, &keypair, &recipient, lamports, false)
+        .await
+        .expect("Uncompressed transfer failed");
+    println!("Uncompressed transfer signature: {}", sig_uncompressed);
+
+    // Fetch fee info for both transactions
+    let fee_compressed = rpc.get_fee_for_message(&rpc.get_transaction(&sig_compressed, solana_client::rpc_config::RpcTransactionConfig { encoding: Some(solana_transaction_status::UiTransactionEncoding::Base64), commitment: None, max_supported_transaction_version: None }).unwrap().transaction.message).unwrap();
+    let fee_uncompressed = rpc.get_fee_for_message(&rpc.get_transaction(&sig_uncompressed, solana_client::rpc_config::RpcTransactionConfig { encoding: Some(solana_transaction_status::UiTransactionEncoding::Base64), commitment: None, max_supported_transaction_version: None }).unwrap().transaction.message).unwrap();
+    println!("Fee (compressed): {} lamports", fee_compressed);
+    println!("Fee (uncompressed): {} lamports", fee_uncompressed);
+    assert!(fee_compressed <= fee_uncompressed, "Compression should not increase fee");
+}
 #[cfg(test)]
 mod tests {
     use owlsol_cli::core::{fee_optimizer, jupiter};

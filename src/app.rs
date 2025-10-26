@@ -130,6 +130,7 @@ impl App {
     fn get_rpc_url(network: &str) -> String {
         match network {
             "devnet" => "https://api.devnet.solana.com".to_string(),
+            "testnet" => "https://api.testnet.solana.com".to_string(),
             "mainnet" => "https://api.mainnet-beta.solana.com".to_string(),
             _ => "https://api.mainnet-beta.solana.com".to_string(),
         }
@@ -296,42 +297,34 @@ impl App {
         // Step 5: Convert amount to base units (assume 6 decimals)
         let amount_lamports = (amount_parsed * 1_000_000.0) as u64;
 
-        // Step 6: Get Jupiter quote
-        match jupiter::get_quote(&from_mint, &to_mint, amount_lamports).await {
-            Ok(quote) => {
-                // Update output
-                self.estimated_output = quote.out_amount as f64 / 1_000_000.0;
-                self.routes_analyzed = quote.routes_count.unwrap_or(1);
-
-                // Estimate compute units (conservative)
-                self.estimated_cu = 150_000;
-
-                // Calculate fees
-                // OWLSOL: Optimized CU (150k) with optimal fee
-                // Convert micro-lamports to SOL: micro → lamports (1e6) → SOL (1e9)
-                let owlsol_micro = self.estimated_cu as u128 * self.optimal_fee as u128;
-                self.owlsol_fee = (owlsol_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
-
-                // Normal wallet: 200k CU with 50% higher fee (common overpayment)
-                let normal_cu = 200_000;
-                let normal_fee_rate = (self.optimal_fee as f64 * 1.5) as u64;
-                let normal_micro = normal_cu as u128 * normal_fee_rate as u128;
-                self.normal_fee = (normal_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
-
-                // Calculate savings
-                if self.normal_fee > 0.0 {
-                    self.savings_pct =
-                        ((self.normal_fee - self.owlsol_fee) / self.normal_fee) * 100.0;
+        // Step 6: Get Jupiter Ultra swap order (quote + tx)
+        match jupiter::ultra_swap_order(&from_mint, &to_mint, amount_lamports, &self.wallet.pubkey()).await {
+            Ok(order) => {
+                if let Some(err) = order.error {
+                    self.error = Some(format!("Ultra API error: {}", err));
+                    self.is_ready = false;
                 } else {
-                    self.savings_pct = 0.0;
+                    // Update output (Ultra API does not return out_amount, so show success)
+                    self.estimated_output = 0.0; // Could parse from message if available
+                    self.routes_analyzed = 1;
+                    self.estimated_cu = 150_000;
+                    let owlsol_micro = self.estimated_cu as u128 * self.optimal_fee as u128;
+                    self.owlsol_fee = (owlsol_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
+                    let normal_cu = 200_000;
+                    let normal_fee_rate = (self.optimal_fee as f64 * 1.5) as u64;
+                    let normal_micro = normal_cu as u128 * normal_fee_rate as u128;
+                    self.normal_fee = (normal_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
+                    if self.normal_fee > 0.0 {
+                        self.savings_pct = ((self.normal_fee - self.owlsol_fee) / self.normal_fee) * 100.0;
+                    } else {
+                        self.savings_pct = 0.0;
+                    }
+                    self.is_ready = true;
+                    self.status = "Ready - All checks passed ✓".to_string();
                 }
-
-                // Ready to execute
-                self.is_ready = true;
-                self.status = "Ready - All checks passed ✓".to_string();
             }
             Err(e) => {
-                self.error = Some(format!("Failed to get quote: {}", e));
+                self.error = Some(format!("Failed to get Ultra swap order: {}", e));
                 self.is_ready = false;
             }
         }
@@ -361,35 +354,39 @@ impl App {
         let amount_parsed: f64 = self.amount.parse()?;
         let amount_lamports = (amount_parsed * 1_000_000.0) as u64;
 
-        // Get quote again (fresh)
-        self.status = "Getting fresh quote...".to_string();
-        let quote = jupiter::get_quote(&from_mint, &to_mint, amount_lamports).await?;
-
-        // Get swap transaction
-        self.status = "Getting swap instructions...".to_string();
-        let swap_response = jupiter::get_swap_transaction(&quote, &self.wallet.pubkey()).await?;
-
+        // Get Ultra swap order (quote + tx)
+        self.status = "Getting Ultra swap order...".to_string();
+        let order = jupiter::ultra_swap_order(&from_mint, &to_mint, amount_lamports, &self.wallet.pubkey()).await?;
+        if let Some(err) = order.error {
+            self.error = Some(format!("Ultra API error: {}", err));
+            self.is_loading = false;
+            self.is_ready = false;
+            return Ok(());
+        }
+        if order.swap_transaction.is_empty() {
+            self.error = Some("No swap transaction returned from Ultra API".to_string());
+            self.is_loading = false;
+            self.is_ready = false;
+            return Ok(());
+        }
         // Build and send transaction
         self.status = "Sending transaction...".to_string();
         let signature = transaction::send_optimized_transaction(
             &self.rpc,
             &self.wallet,
-            &swap_response.swap_transaction,
+            &order.swap_transaction,
             self.optimal_fee,
         )
         .await?;
-
         // Success!
         self.last_signature = Some(signature.clone());
         self.status = format!("✅ Swap completed! Signature: {}", &signature[..8]);
         self.is_loading = false;
         self.is_ready = false;
-
         // Update balance
         if let Ok(lamports) = self.rpc.get_balance(&self.wallet.pubkey()) {
             self.balance = lamports as f64 / 1_000_000_000.0;
         }
-
         Ok(())
     }
 }

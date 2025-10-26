@@ -95,10 +95,10 @@ impl Compressor {
 
         for result in results.into_iter().flatten() {
             let compressed_size = result.0.len() as u64;
-            if compressed_size < original_size {
-                if best_result.is_none() || compressed_size < best_result.as_ref().unwrap().2 {
-                    best_result = Some((result.0, result.1, compressed_size));
-                }
+            if compressed_size < original_size
+                && (best_result.is_none() || compressed_size < best_result.as_ref().unwrap().2)
+            {
+                best_result = Some((result.0, result.1, compressed_size));
             }
         }
 

@@ -56,7 +56,9 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
                 // RLE sequence
                 let byte = data[i + 1];
                 let count = data[i + 2] as usize;
-                result.extend(std::iter::repeat(byte).take(count));
+                // More concise and efficient than repeat().take()
+                let new_len = result.len() + count;
+                result.resize(new_len, byte);
                 i += 3;
             } else {
                 // Incomplete sequence, treat as literal

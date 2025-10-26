@@ -1,5 +1,5 @@
 use crate::error::Result;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 const DICT_MARKER: u8 = 0xFF;
 const MIN_MATCH_LEN: usize = 3; // Only match 3+ bytes
@@ -52,8 +52,8 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
                     break;
                 }
                 let sequence = data[i..i + len].to_vec();
-                if !dictionary.contains_key(&sequence) {
-                    dictionary.insert(sequence, next_id);
+                if let Entry::Vacant(e) = dictionary.entry(sequence) {
+                    e.insert(next_id);
                     next_id += 1;
                 }
             }

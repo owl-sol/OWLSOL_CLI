@@ -1,4 +1,4 @@
-use crate::algorithms::{dict_compress, dict_decompress, rle_compress, rle_decompress, HuffmanCodec};
+use crate::algorithms::{dict_compress, rle_compress, HuffmanCodec};
 use crate::analyzer::DataAnalyzer;
 use crate::error::{CompressionError, Result};
 use crate::metadata::{
@@ -13,6 +13,20 @@ pub struct Compressor {
 }
 
 impl Compressor {
+    fn compress_lz4(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
+        use lz4::block::compress;
+        let compressed = compress(data, None, false)
+            .map_err(|e| CompressionError::compression_failed(format!("LZ4: {}", e)))?;
+        Ok((compressed, CompressionAlgorithm::None)) // Will set algo below
+    }
+
+    fn compress_zstd(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
+        use zstd::stream::encode_all;
+        use std::io::Cursor;
+        let compressed = encode_all(Cursor::new(data), 1)
+            .map_err(|e| CompressionError::compression_failed(format!("Zstd: {}", e)))?;
+        Ok((compressed, CompressionAlgorithm::None)) // Will set algo below
+    }
     pub fn new() -> Self {
         Self {
             analyzer: DataAnalyzer::new(),
@@ -40,40 +54,72 @@ impl Compressor {
 
         let original_size = data.len() as u64;
 
-        // Select algorithm
-        let algo = match algorithm {
-            Some(a) => a,
-            None => {
-                let analysis = self.analyzer.analyze(data);
-                self.selector.select_algorithm(&analysis)
+        // If algorithm is specified, use it. If None (auto), try all and pick best.
+        let algorithms = match algorithm {
+            Some(a) => vec![a],
+            None => vec![
+                CompressionAlgorithm::Huffman,
+                CompressionAlgorithm::Dictionary,
+                CompressionAlgorithm::RunLength,
+                CompressionAlgorithm::Hybrid,
+            ],
+        };
+
+        let mut best_result: Option<CompressionResult> = None;
+        // Try all custom algorithms
+        for algo in algorithms {
+            let (compressed_data, actual_algo) = match algo {
+                CompressionAlgorithm::None => (data.to_vec(), CompressionAlgorithm::None),
+                CompressionAlgorithm::Huffman => self.compress_huffman(data)?,
+                CompressionAlgorithm::Dictionary => self.compress_dictionary(data)?,
+                CompressionAlgorithm::RunLength => self.compress_rle(data)?,
+                CompressionAlgorithm::Hybrid => self.compress_hybrid(data)?,
+            };
+            let compressed_size = compressed_data.len() as u64;
+            if compressed_size < original_size {
+                let checksum = calculate_checksum(&compressed_data);
+                let metadata = CompressionMetadata::new(actual_algo, original_size, compressed_size)
+                    .with_checksum(checksum);
+                let result = CompressionResult::new(compressed_data, metadata);
+                if best_result.is_none() || compressed_size < best_result.as_ref().unwrap().metadata.compressed_size {
+                    best_result = Some(result);
+                }
             }
-        };
-
-        // Compress with selected algorithm
-        let (compressed_data, actual_algo) = match algo {
-            CompressionAlgorithm::None => (data.to_vec(), CompressionAlgorithm::None),
-            CompressionAlgorithm::Huffman => self.compress_huffman(data)?,
-            CompressionAlgorithm::Dictionary => self.compress_dictionary(data)?,
-            CompressionAlgorithm::RunLength => self.compress_rle(data)?,
-            CompressionAlgorithm::Hybrid => self.compress_hybrid(data)?,
-        };
-
-        let compressed_size = compressed_data.len() as u64;
-
-        // Check if compression is worthwhile
-        let (final_data, final_algo) = if compressed_size >= original_size {
-            (data.to_vec(), CompressionAlgorithm::None)
-        } else {
-            (compressed_data, actual_algo)
-        };
-
-        // Calculate checksum
-        let checksum = calculate_checksum(&final_data);
-
-        let metadata = CompressionMetadata::new(final_algo, original_size, final_data.len() as u64)
-            .with_checksum(checksum);
-
-        Ok(CompressionResult::new(final_data, metadata))
+        }
+        // Try LZ4
+        if let Ok((lz4_data, _)) = self.compress_lz4(data) {
+            let lz4_size = lz4_data.len() as u64;
+            if lz4_size < original_size {
+                let checksum = calculate_checksum(&lz4_data);
+                let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, lz4_size)
+                    .with_checksum(checksum);
+                let result = CompressionResult::new(lz4_data, metadata);
+                if best_result.is_none() || lz4_size < best_result.as_ref().unwrap().metadata.compressed_size {
+                    best_result = Some(result);
+                }
+            }
+        }
+        // Try Zstd
+        if let Ok((zstd_data, _)) = self.compress_zstd(data) {
+            let zstd_size = zstd_data.len() as u64;
+            if zstd_size < original_size {
+                let checksum = calculate_checksum(&zstd_data);
+                let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, zstd_size)
+                    .with_checksum(checksum);
+                let result = CompressionResult::new(zstd_data, metadata);
+                if best_result.is_none() || zstd_size < best_result.as_ref().unwrap().metadata.compressed_size {
+                    best_result = Some(result);
+                }
+            }
+        }
+        // If no worthwhile compression, return original data with None
+        let final_result = best_result.unwrap_or_else(|| {
+            let checksum = calculate_checksum(data);
+            let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, original_size)
+                .with_checksum(checksum);
+            CompressionResult::new(data.to_vec(), metadata)
+        });
+        Ok(final_result)
     }
 
     fn compress_huffman(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # OWLSOL CLI Installer Script
-# Usage: curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash
+# Usage (stable latest):
+#   curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash
+# Usage (specific tag):
+#   curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash -s v0.1.0
+# Usage (nightly channel):
+#   curl -fsSL https://raw.githubusercontent.com/owl-sol/OWLSOL_CLI/main/scripts/install.sh | bash -s nightly
 
 set -euo pipefail
 
@@ -8,6 +13,7 @@ set -euo pipefail
 REPO="owl-sol/OWLSOL_CLI"
 BIN_NAME="owlsol"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+REQUESTED_CHANNEL="${1:-latest}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -68,19 +74,40 @@ detect_platform() {
     info "Detected platform: $TARGET"
 }
 
-# Get latest release version
-get_latest_version() {
-    info "Fetching latest release version..."
-    
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-        | grep '"tag_name":' \
-        | sed -E 's/.*"([^"]+)".*/\1/')
-    
-    if [ -z "$VERSION" ]; then
-        error "Failed to fetch latest version"
-    fi
-    
-    info "Latest version: $VERSION"
+url_exists() {
+    curl -fsI "$1" >/dev/null 2>&1
+}
+
+# Resolve which version/tag to install into VERSION
+resolve_version() {
+    case "$REQUESTED_CHANNEL" in
+        nightly)
+            VERSION="nightly"
+            info "Using nightly channel"
+            return 0
+            ;;
+        v*)
+            VERSION="$REQUESTED_CHANNEL"
+            info "Using specified version: $VERSION"
+            return 0
+            ;;
+        latest|*)
+            info "Fetching latest release version..."
+            # If no releases exist yet, this endpoint returns 404; handle gracefully
+            set +e
+            VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null \
+                | grep '"tag_name":' \
+                | sed -E 's/.*"([^"]+)".*/\1/')
+            rc=$?
+            set -e
+            if [ $rc -ne 0 ] || [ -z "$VERSION" ]; then
+                warn "No stable releases found yet; falling back to nightly"
+                VERSION="nightly"
+            else
+                info "Latest version: $VERSION"
+            fi
+            ;;
+    esac
 }
 
 # Download and install
@@ -95,9 +122,24 @@ download_and_install() {
     
     info "Downloading from: $download_url"
     
-    if ! curl -fsSL "$download_url" -o "$tmpdir/$archive_name"; then
-        error "Failed to download release archive"
+    if ! url_exists "$download_url"; then
+        warn "Asset not found for $VERSION and target $TARGET."
+        if [ "$VERSION" != "nightly" ]; then
+            alt_url="https://github.com/${REPO}/releases/download/nightly/${BIN_NAME}-nightly-${TARGET}.tar.gz"
+            warn "Trying nightly build..."
+            if url_exists "$alt_url"; then
+                VERSION="nightly"
+                archive_name="${BIN_NAME}-${VERSION}-${TARGET}.tar.gz"
+                download_url="$alt_url"
+            else
+                error "No matching asset found for latest or nightly. Please check the Releases page."
+            fi
+        else
+            error "Nightly asset not found for target $TARGET. Please check the Releases page."
+        fi
     fi
+
+    curl -fsSL "$download_url" -o "$tmpdir/$archive_name"
     
     success "Downloaded successfully"
     

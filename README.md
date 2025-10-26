@@ -1,6 +1,5 @@
 
 <div align="center">
-
 #### 🦉 Why OWLSOL?
 
 - **💰 Save Money**: Reduce Solana account rent by 60-80%

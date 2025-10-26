@@ -24,7 +24,7 @@ where
 }
 
 /// Jupiter quote response (subset we need)
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct QuoteResponse {
     #[serde(rename = "inputMint")]
     pub input_mint: String,

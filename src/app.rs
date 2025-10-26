@@ -308,13 +308,15 @@ impl App {
 
                 // Calculate fees
                 // OWLSOL: Optimized CU (150k) with optimal fee
-                self.owlsol_fee = (self.estimated_cu as f64 * self.optimal_fee as f64)
-                    / 1_000_000_000.0;
+                // Convert micro-lamports to SOL: micro → lamports (1e6) → SOL (1e9)
+                let owlsol_micro = self.estimated_cu as u128 * self.optimal_fee as u128;
+                self.owlsol_fee = (owlsol_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
 
                 // Normal wallet: 200k CU with 50% higher fee (common overpayment)
                 let normal_cu = 200_000;
                 let normal_fee_rate = (self.optimal_fee as f64 * 1.5) as u64;
-                self.normal_fee = (normal_cu as f64 * normal_fee_rate as f64) / 1_000_000_000.0;
+                let normal_micro = normal_cu as u128 * normal_fee_rate as u128;
+                self.normal_fee = (normal_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
 
                 // Calculate savings
                 if self.normal_fee > 0.0 {

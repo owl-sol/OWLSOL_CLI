@@ -67,8 +67,11 @@ pub fn analyze_savings(optimal_fee: u64, estimated_cu: u32) -> FeeSavingsAnalysi
     let typical_fee_rate = (optimal_fee as f64 * 1.5) as u64;
 
     // Calculate costs
-    let owlsol_cost = (estimated_cu as u64 * optimal_fee) as f64 / 1_000_000_000.0;
-    let typical_cost = (typical_cu * typical_fee_rate) as f64 / 1_000_000_000.0;
+    // Convert micro-lamports → lamports → SOL (1e6 then 1e9)
+    let owlsol_micro = estimated_cu as u128 * optimal_fee as u128;
+    let typical_micro = typical_cu as u128 * typical_fee_rate as u128;
+    let owlsol_cost = (owlsol_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
+    let typical_cost = (typical_micro as f64) / 1_000_000.0 / 1_000_000_000.0;
 
     // Calculate savings
     let absolute_savings = typical_cost - owlsol_cost;
@@ -109,11 +112,11 @@ mod tests {
 
         let analysis = analyze_savings(optimal_fee, estimated_cu);
 
-        // OWLSOL: 150k CU × 5000 = 750M micro-lamports = 0.00075 SOL
-        assert!((analysis.owlsol_fee - 0.00075).abs() < 0.00001);
+    // OWLSOL: 150k CU × 5000 = 750M micro-lamports = 0.00000075 SOL
+    assert!((analysis.owlsol_fee - 0.00000075).abs() < 1e-9);
 
-        // Typical: 200k CU × 7500 = 1500M micro-lamports = 0.0015 SOL
-        assert!((analysis.typical_fee - 0.0015).abs() < 0.00001);
+    // Typical: 200k CU × 7500 = 1500M micro-lamports = 0.0000015 SOL
+    assert!((analysis.typical_fee - 0.0000015).abs() < 1e-9);
 
         // Savings: 50%
         assert!((analysis.percentage_savings - 50.0).abs() < 1.0);

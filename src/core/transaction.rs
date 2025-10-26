@@ -83,7 +83,7 @@ mod tests {
     fn test_decode_base64_failure() {
         // Empty base64 should fail decode path and thus send_raw_transaction
         // would also fail at runtime; here we just ensure function exists.
-        let bytes = base64::engine::general_purpose::STANDARD.decode("");
-        assert!(bytes.is_err());
+        let bytes = base64::engine::general_purpose::STANDARD.decode("!!!notbase64!!!");
+        assert!(bytes.is_err(), "Decoding invalid base64 should error");
     }
 }

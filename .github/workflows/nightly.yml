@@ -1,0 +1,89 @@
+name: nightly
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-nightly:
+    name: Nightly build and rolling release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MUSL tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build (release)
+        shell: bash
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          set -euxo pipefail
+          cargo build --release -p cli --bin owlsol --target ${{ matrix.target }}
+
+      - name: Package artifacts
+        shell: bash
+        run: |
+          set -euxo pipefail
+          TAG="nightly"
+          BIN_NAME="owlsol"
+          OUTDIR="dist/${BIN_NAME}-${TAG}-${{ matrix.target }}"
+          mkdir -p "$OUTDIR"
+          cp target/${{ matrix.target }}/release/${BIN_NAME} "$OUTDIR/"
+          # include docs
+          [[ -f README.md ]] && cp README.md "$OUTDIR/" || true
+          [[ -f LICENSE ]] && cp LICENSE "$OUTDIR/" || true
+          # archive
+          mkdir -p dist
+          (cd dist && tar -czf "${BIN_NAME}-${TAG}-${{ matrix.target }}.tar.gz" "${BIN_NAME}-${TAG}-${{ matrix.target }}")
+
+      - name: Move/update rolling tag (nightly)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag -f nightly "$GITHUB_SHA"
+          git push origin -f nightly
+
+      - name: Create/Update Nightly Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: nightly
+          name: "Nightly build"
+          body: |
+            Automated nightly build from commit ${{ github.sha }} on branch ${{ github.ref_name }}.
+
+            This release is updated on every push to main and assets are replaced.
+
+            Targets:
+            - x86_64-unknown-linux-musl
+            - aarch64-unknown-linux-musl
+          draft: false
+          prerelease: true
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: true
+          artifactErrorsFailBuild: true
+          artifacts: |
+            dist/owlsol-nightly-*.tar.gz

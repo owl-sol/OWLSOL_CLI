@@ -1,0 +1,28 @@
+
+[package]
+name = "owlsol-cli"
+edition = "2021"
+version = "0.1.0"
+authors = ["OWLSOL Team <team@owlsol.com>"]
+license = "MIT"
+
+[[bin]]
+name = "owlsol"
+path = "src/main.rs"
+
+[dependencies]
+owlsol-core = { path = "../core" }
+owlsol-solana = { path = "../solana" }
+clap = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+colored = { workspace = true }
+indicatif = { workspace = true }
+comfy-table = { workspace = true }
+dialoguer = { workspace = true }
+console = { workspace = true }
+ratatui = "0.25"
+
+[dev-dependencies]
+tempfile = { workspace = true }

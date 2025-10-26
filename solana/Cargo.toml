@@ -1,0 +1,19 @@
+[package]
+name = "owlsol-solana"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+owlsol-core = { path = "../core" }
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+solana-sdk.workspace = true
+solana-client.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tokio-test = "0.4"

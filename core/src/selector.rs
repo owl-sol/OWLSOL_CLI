@@ -61,6 +61,8 @@ impl AlgorithmSelector {
                 }
             }
             CompressionAlgorithm::Hybrid => 0.4,
+            CompressionAlgorithm::Lz4 => 0.5,
+            CompressionAlgorithm::Zstd => 0.4,
         }
     }
 

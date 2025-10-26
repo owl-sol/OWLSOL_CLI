@@ -1,0 +1,28 @@
+{
+  "pdaAddress": "J8zQvCHKzLj5VNzNj7DEGfXMqXkQdMEKJKkMVqSLwUrQ",
+  "auctionHouseAddress": "E8cU1WiRWjanGxmn96ewBgk9vPTcL6AEZ1t6F6fkgUWe",
+  "tokenAddress": "8FKAKq6Ezw36eUMKBySvhsJFkhUEt7WYTbqQLMZDZXwc",
+  "tokenMint": "DRiP2Pn2K6fuMLKQmt5rZWqHhg3GKYWvKRv7Fes5B8Kt",
+  "seller": "4BWdKQ7FLqBg1tVEG1FGvPvVDDXgSvH7gyJzF8FhWdXs",
+  "sellerReferral": "autMW8SgBkVYeBgqYiTuJZnkvDZMVU2MHJh9Jh7jVzh",
+  "tokenSize": 1,
+  "price": 2500000000,
+  "rarity": {
+    "moonrank": {
+      "rank": 234,
+      "absolute_rarity": 4567.89,
+      "crawl": {
+        "id": "DRiP2Pn2K6fuMLKQmt5rZWqHhg3GKYWvKRv7Fes5B8Kt",
+        "first_verified_creator": "4BWdKQ7FLqBg1tVEG1FGvPvVDDXgSvH7gyJzF8FhWdXs"
+      }
+    },
+    "howrare": {
+      "rank": 245
+    }
+  },
+  "extra": {
+    "img": "https://creator-hub-prod.s3.us-east-2.amazonaws.com/drip_pfp_1698249600000.png"
+  },
+  "expiry": 1730395200,
+  "listingSource": "magiceden_v2"
+}

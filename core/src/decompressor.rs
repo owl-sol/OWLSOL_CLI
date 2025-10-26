@@ -11,26 +11,25 @@ impl Decompressor {
     }
 
     pub fn decompress(&self, data: &[u8], metadata: &CompressionMetadata) -> Result<Vec<u8>> {
-        // Validate metadata
         if !metadata.validate() {
             return Err(CompressionError::InvalidMetadata(
                 "Invalid compression metadata".into(),
             ));
         }
 
-        // Verify checksum if available
         if metadata.checksum != 0 && !verify_checksum(data, metadata.checksum) {
             return Err(CompressionError::CorruptedData(
                 "Checksum mismatch".into(),
             ));
         }
 
-        // Decompress based on algorithm
         let decompressed = match metadata.algorithm {
             CompressionAlgorithm::None => data.to_vec(),
             CompressionAlgorithm::Huffman => self.decompress_huffman(data, metadata)?,
             CompressionAlgorithm::Dictionary => self.decompress_dictionary(data)?,
             CompressionAlgorithm::RunLength => self.decompress_rle(data)?,
+            CompressionAlgorithm::Lz4 => self.decompress_lz4(data)?,
+            CompressionAlgorithm::Zstd => self.decompress_zstd(data)?,
             CompressionAlgorithm::Hybrid => {
                 return Err(CompressionError::UnsupportedAlgorithm(
                     "Hybrid algorithm should be stored as specific algorithm".into(),
@@ -38,7 +37,6 @@ impl Decompressor {
             }
         };
 
-        // Verify decompressed size
         if decompressed.len() != metadata.original_size as usize {
             return Err(CompressionError::CorruptedData(format!(
                 "Size mismatch: expected {}, got {}",
@@ -55,18 +53,15 @@ impl Decompressor {
             return Err(CompressionError::InsufficientData);
         }
 
-        // Read tree size
         let tree_size = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
         
         if data.len() < 4 + tree_size {
             return Err(CompressionError::decompression_failed("Truncated tree data"));
         }
 
-        // Deserialize tree
         let mut codec = HuffmanCodec::new();
         codec.deserialize_tree(&data[4..4 + tree_size])?;
 
-        // Decode data
         let encoded = &data[4 + tree_size..];
         codec.decode(encoded, metadata.original_size as usize)
     }
@@ -77,6 +72,17 @@ impl Decompressor {
 
     fn decompress_rle(&self, data: &[u8]) -> Result<Vec<u8>> {
         rle_decompress(data)
+    }
+
+    fn decompress_lz4(&self, data: &[u8]) -> Result<Vec<u8>> {
+        use lz4::block::decompress;
+        decompress(data, None)
+            .map_err(|e| CompressionError::decompression_failed(format!("LZ4 error: {}", e)))
+    }
+
+    fn decompress_zstd(&self, data: &[u8]) -> Result<Vec<u8>> {
+        zstd::bulk::decompress(data, 10 * 1024 * 1024)
+            .map_err(|e| CompressionError::decompression_failed(format!("Zstd error: {}", e)))
     }
 }
 

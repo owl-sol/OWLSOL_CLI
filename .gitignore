@@ -14,3 +14,9 @@
 *.jpg
 *.jpeg
 *.pdf
+
+# OWLSOL CLI generated/test files
+test-nft.json
+test-nft.json.owlsol
+test-nft.json.owlsol.meta.json
+decompressed.json

@@ -17,7 +17,7 @@ impl Compressor {
         use lz4::block::compress;
         let compressed = compress(data, None, false)
             .map_err(|e| CompressionError::compression_failed(format!("LZ4: {}", e)))?;
-        Ok((compressed, CompressionAlgorithm::None)) // Will set algo below
+        Ok((compressed, CompressionAlgorithm::Lz4))
     }
 
     fn compress_zstd(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
@@ -25,7 +25,7 @@ impl Compressor {
         use std::io::Cursor;
         let compressed = encode_all(Cursor::new(data), 1)
             .map_err(|e| CompressionError::compression_failed(format!("Zstd: {}", e)))?;
-        Ok((compressed, CompressionAlgorithm::None)) // Will set algo below
+        Ok((compressed, CompressionAlgorithm::Zstd))
     }
     pub fn new() -> Self {
         Self {
@@ -54,94 +54,89 @@ impl Compressor {
 
         let original_size = data.len() as u64;
 
-        // If algorithm is specified, use it. If None (auto), try all and pick best.
-        let algorithms = match algorithm {
-            Some(a) => vec![a],
-            None => vec![
-                CompressionAlgorithm::Huffman,
-                CompressionAlgorithm::Dictionary,
-                CompressionAlgorithm::RunLength,
-                CompressionAlgorithm::Hybrid,
-            ],
-        };
-
-        let mut best_result: Option<CompressionResult> = None;
-        // Try all custom algorithms
-        for algo in algorithms {
+        // If specific algorithm requested, use only that
+        if let Some(algo) = algorithm {
             let (compressed_data, actual_algo) = match algo {
                 CompressionAlgorithm::None => (data.to_vec(), CompressionAlgorithm::None),
                 CompressionAlgorithm::Huffman => self.compress_huffman(data)?,
                 CompressionAlgorithm::Dictionary => self.compress_dictionary(data)?,
                 CompressionAlgorithm::RunLength => self.compress_rle(data)?,
+                CompressionAlgorithm::Lz4 => self.compress_lz4(data)?,
+                CompressionAlgorithm::Zstd => self.compress_zstd(data)?,
                 CompressionAlgorithm::Hybrid => self.compress_hybrid(data)?,
             };
+
             let compressed_size = compressed_data.len() as u64;
-            if compressed_size < original_size {
-                let checksum = calculate_checksum(&compressed_data);
-                let metadata = CompressionMetadata::new(actual_algo, original_size, compressed_size)
-                    .with_checksum(checksum);
-                let result = CompressionResult::new(compressed_data, metadata);
-                if best_result.is_none() || compressed_size < best_result.as_ref().unwrap().metadata.compressed_size {
-                    best_result = Some(result);
-                }
-            }
-        }
-        // Try LZ4
-        if let Ok((lz4_data, _)) = self.compress_lz4(data) {
-            let lz4_size = lz4_data.len() as u64;
-            if lz4_size < original_size {
-                let checksum = calculate_checksum(&lz4_data);
-                let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, lz4_size)
-                    .with_checksum(checksum);
-                let result = CompressionResult::new(lz4_data, metadata);
-                if best_result.is_none() || lz4_size < best_result.as_ref().unwrap().metadata.compressed_size {
-                    best_result = Some(result);
-                }
-            }
-        }
-        // Try Zstd
-        if let Ok((zstd_data, _)) = self.compress_zstd(data) {
-            let zstd_size = zstd_data.len() as u64;
-            if zstd_size < original_size {
-                let checksum = calculate_checksum(&zstd_data);
-                let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, zstd_size)
-                    .with_checksum(checksum);
-                let result = CompressionResult::new(zstd_data, metadata);
-                if best_result.is_none() || zstd_size < best_result.as_ref().unwrap().metadata.compressed_size {
-                    best_result = Some(result);
-                }
-            }
-        }
-        // If no worthwhile compression, return original data with None
-        let final_result = best_result.unwrap_or_else(|| {
-            let checksum = calculate_checksum(data);
-            let metadata = CompressionMetadata::new(CompressionAlgorithm::None, original_size, original_size)
+            // Check if compression is worthwhile
+            let (final_data, final_algo) = if compressed_size >= original_size {
+                (data.to_vec(), CompressionAlgorithm::None)
+            } else {
+                (compressed_data, actual_algo)
+            };
+
+            let checksum = calculate_checksum(&final_data);
+            let metadata = CompressionMetadata::new(final_algo, original_size, final_data.len() as u64)
                 .with_checksum(checksum);
-            CompressionResult::new(data.to_vec(), metadata)
-        });
-        Ok(final_result)
+
+            return Ok(CompressionResult::new(final_data, metadata));
+        }
+
+        // Auto mode: Try all algorithms and pick best
+        let mut best_result: Option<(Vec<u8>, CompressionAlgorithm, u64)> = None;
+
+        // Try all algorithms
+        let results = vec![
+            self.compress_huffman(data).ok(),
+            self.compress_dictionary(data).ok(),
+            self.compress_rle(data).ok(),
+            self.compress_lz4(data).ok(),
+            self.compress_zstd(data).ok(),
+        ];
+
+        for result in results.into_iter().flatten() {
+            let compressed_size = result.0.len() as u64;
+            if compressed_size < original_size {
+                if best_result.is_none() || compressed_size < best_result.as_ref().unwrap().2 {
+                    best_result = Some((result.0, result.1, compressed_size));
+                }
+            }
+        }
+
+        // Use best result or original data
+        let (final_data, final_algo) = if let Some((data, algo, _)) = best_result {
+            (data, algo)
+        } else {
+            (data.to_vec(), CompressionAlgorithm::None)
+        };
+
+        let checksum = calculate_checksum(&final_data);
+        let metadata = CompressionMetadata::new(final_algo, original_size, final_data.len() as u64)
+            .with_checksum(checksum);
+
+        Ok(CompressionResult::new(final_data, metadata))
     }
 
     fn compress_huffman(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
-        let mut codec = HuffmanCodec::new();
-        codec.build_from_data(data)?;
+    let mut codec = HuffmanCodec::new();
+    codec.build_from_data(data)?;
 
-        let encoded = codec.encode(data)?;
-        let tree = codec.serialize_tree()?;
+    let encoded = codec.encode(data)?;
+    let tree = codec.serialize_tree()?;
 
-        // Format: [tree_size(4 bytes)][tree][encoded_data]
-        let tree_size = tree.len() as u32;
-        let mut result = Vec::with_capacity(4 + tree.len() + encoded.len());
-        result.extend_from_slice(&tree_size.to_le_bytes());
-        result.extend_from_slice(&tree);
-        result.extend_from_slice(&encoded);
-
-        Ok((result, CompressionAlgorithm::Huffman))
+    // Format: [tree_size(4 bytes)][tree][encoded_data]
+    let tree_size = tree.len() as u32;
+    let mut result = Vec::with_capacity(4 + tree.len() + encoded.len());
+    result.extend_from_slice(&tree_size.to_le_bytes());
+    result.extend_from_slice(&tree);
+    result.extend_from_slice(&encoded);
+    println!("[COMPRESS HUFFMAN] Original len: {}, Compressed len: {}", data.len(), result.len());
+    Ok((result, CompressionAlgorithm::Huffman))
     }
 
     fn compress_dictionary(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
-        let compressed = dict_compress(data)?;
-        Ok((compressed, CompressionAlgorithm::Dictionary))
+    let compressed = dict_compress(data)?;
+    println!("[COMPRESS DICT] Original len: {}, Compressed len: {}", data.len(), compressed.len());
+    Ok((compressed, CompressionAlgorithm::Dictionary))
     }
 
     fn compress_rle(&self, data: &[u8]) -> Result<(Vec<u8>, CompressionAlgorithm)> {
@@ -229,8 +224,10 @@ mod tests {
         let compressor = Compressor::new();
         let data: Vec<u8> = (0..1000).map(|i| (i * 7919) as u8).collect();
         let result = compressor.compress(&data).unwrap();
-        
-        // Should not compress random data
-        assert_eq!(result.metadata.algorithm, CompressionAlgorithm::None);
+        // For random data, either None, Lz4, or Zstd may be chosen depending on output size
+        match result.metadata.algorithm {
+            CompressionAlgorithm::None | CompressionAlgorithm::Lz4 | CompressionAlgorithm::Zstd => {}
+            other => panic!("Unexpected algorithm for incompressible data: {:?}", other),
+        }
     }
 }

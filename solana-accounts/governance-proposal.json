@@ -1,0 +1,48 @@
+{
+  "accountType": "ProposalV2",
+  "governance": "DWhnQm42vCBLkA9RsrBB2spyR3uAJq1BGeroyNMKgnEh",
+  "governingTokenMint": "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw",
+  "state": "Voting",
+  "tokenOwnerRecord": "4j9HK7ARhxCH5zJryPSufJaCq5CbRMZjdCQ7KxGhVUeZ",
+  "signatoriesCount": 0,
+  "signatoriesSignedOffCount": 0,
+  "voteType": "SingleChoice",
+  "options": [
+    {
+      "label": "Approve",
+      "voteWeight": 15234567890,
+      "voteResult": "Succeeded",
+      "transactionsExecutedCount": 0,
+      "transactionsCount": 1,
+      "transactionsNextIndex": 0
+    },
+    {
+      "label": "Deny",
+      "voteWeight": 3456789012,
+      "voteResult": "Defeated",
+      "transactionsExecutedCount": 0,
+      "transactionsCount": 0,
+      "transactionsNextIndex": 0
+    }
+  ],
+  "denyVoteWeight": 3456789012,
+  "vetoVoteWeight": 0,
+  "abstainVoteWeight": 0,
+  "startVotingAt": 1698249600,
+  "draftAt": 1698163200,
+  "signingOffAt": null,
+  "votingAt": 1698249600,
+  "votingAtSlot": 234567890,
+  "votingCompletedAt": null,
+  "executingAt": null,
+  "closedAt": null,
+  "executionFlags": "None",
+  "maxVoteWeight": 50000000000,
+  "maxVotingTime": 259200,
+  "voteThreshold": {
+    "type": "YesVotePercentage",
+    "value": 60
+  },
+  "name": "Treasury Budget Allocation Q4 2024",
+  "descriptionLink": "https://forum.solana.com/proposal/abc123"
+}

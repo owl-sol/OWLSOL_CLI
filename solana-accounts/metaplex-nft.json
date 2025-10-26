@@ -1,0 +1,38 @@
+{
+  "name": "Solana Monkey Business #3442",
+  "symbol": "SMB",
+  "description": "SMB is a collection of 5000 randomly generated 24x24 pixels NFTs on the Solana Blockchain. Each SolanMonkey is unique and comes with different type and attributes varying in rarity.",
+  "seller_fee_basis_points": 1000,
+  "image": "https://www.arweave.net/xqjVBdJlK4xKXZ5cPVGjJpKo8xqjVBdJlK4xKXZ5cPVGjJpKo?ext=png",
+  "animation_url": "",
+  "external_url": "https://solanamonkey.business/",
+  "attributes": [
+    {"trait_type": "Attributes Count", "value": 2},
+    {"trait_type": "Type", "value": "SMB"},
+    {"trait_type": "Clothes", "value": "Naked"},
+    {"trait_type": "Ears", "value": "None"},
+    {"trait_type": "Mouth", "value": "None"},
+    {"trait_type": "Eyes", "value": "None"},
+    {"trait_type": "Hat", "value": "Crown"}
+  ],
+  "collection": {"name": "SMB Gen2", "family": "Solana Monkey Business"},
+  "properties": {
+    "files": [
+      {
+        "uri": "https://www.arweave.net/xqjVBdJlK4xKXZ5cPVGjJpKo8xqjVBdJlK4xKXZ5cPVGjJpKo?ext=png",
+        "type": "image/png"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "mdaoxg4DVGptU4WSpzGyVpnZocx8zo6WxZyq6PGNuxq",
+        "share": 0
+      },
+      {
+        "address": "HAryckvjyViFQEmhmMoCtqqBMJnpXEYViamyDhZUJfnG",
+        "share": 100
+      }
+    ]
+  }
+}

@@ -1,10 +1,10 @@
-
 use crate::error::Result;
 use std::collections::HashMap;
 
 const DICT_MARKER: u8 = 0xFF;
-const WINDOW_SIZE: usize = 4;
-const MAX_DICT_SIZE: u16 = 4096;
+const MIN_MATCH_LEN: usize = 3; // Only match 3+ bytes
+const MAX_MATCH_LEN: usize = 8; // Longer matches
+const MAX_DICT_SIZE: u16 = 256;  // Smaller dictionary
 
 pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     if data.is_empty() {
@@ -16,22 +16,22 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
     let mut next_id = 0u16;
     let mut i = 0;
 
-    // Build dictionary as we go
+    // Build dictionary as we scan
     while i < data.len() {
         let mut best_len = 0;
         let mut best_id = 0u16;
 
-        // Find longest matching sequence in dictionary
-        for len in (2..=WINDOW_SIZE.min(data.len() - i)).rev() {
+        // Try to find match in dictionary (only for MIN_MATCH_LEN..=MAX_MATCH_LEN)
+        for len in (MIN_MATCH_LEN..=MAX_MATCH_LEN.min(data.len() - i)).rev() {
             let sequence = &data[i..i + len];
             if let Some(&id) = dictionary.get(sequence) {
                 best_len = len;
                 best_id = id;
-                break; // Take first (longest) match
+                break;
             }
         }
 
-        if best_len >= 2 {
+        if best_len >= MIN_MATCH_LEN {
             // Use dictionary reference
             result.push(DICT_MARKER);
             result.extend_from_slice(&best_id.to_le_bytes());
@@ -46,17 +46,15 @@ pub fn compress(data: &[u8]) -> Result<Vec<u8>> {
             } else {
                 result.push(byte);
             }
-            // Add new sequences to dictionary (for future matches)
-            if i + WINDOW_SIZE <= data.len() && next_id < MAX_DICT_SIZE {
-                for len in 2..=WINDOW_SIZE {
-                    if i + len <= data.len() {
-                        let sequence = data[i..i + len].to_vec();
-                        dictionary.entry(sequence).or_insert_with(|| {
-                            let id = next_id;
-                            next_id += 1;
-                            id
-                        });
-                    }
+            // Add all possible sequences for future matches
+            for len in MIN_MATCH_LEN..=MAX_MATCH_LEN.min(data.len() - i) {
+                if next_id >= MAX_DICT_SIZE {
+                    break;
+                }
+                let sequence = data[i..i + len].to_vec();
+                if !dictionary.contains_key(&sequence) {
+                    dictionary.insert(sequence, next_id);
+                    next_id += 1;
                 }
             }
             i += 1;
@@ -114,7 +112,10 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
                 let id = u16::from_le_bytes([data[pos + 1], data[pos + 2]]);
                 match dictionary.get(&id) {
                     Some(sequence) => result.extend_from_slice(sequence),
-                    None => return Err(crate::error::CompressionError::CorruptedData(format!("Missing dictionary entry for id {} at pos {}", id, pos))),
+                    None => {
+                        println!("[DICT DECOMPRESS] Missing dictionary entry for id {} at pos {}", id, pos);
+                        return Err(crate::error::CompressionError::CorruptedData(format!("Missing dictionary entry for id {} at pos {}", id, pos)));
+                    }
                 }
                 pos += 3;
             } else {
@@ -128,6 +129,7 @@ pub fn decompress(data: &[u8]) -> Result<Vec<u8>> {
             pos += 1;
         }
     }
+    println!("[DICT DECOMPRESS] Output length: {}", result.len());
     Ok(result)
 }
 

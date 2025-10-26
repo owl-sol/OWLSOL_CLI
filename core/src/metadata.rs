@@ -12,6 +12,8 @@ pub enum CompressionAlgorithm {
     Dictionary = 2,
     RunLength = 3,
     Hybrid = 4,
+    Lz4 = 5,
+    Zstd = 6,
 }
 
 impl CompressionAlgorithm {
@@ -22,6 +24,8 @@ impl CompressionAlgorithm {
             2 => Some(Self::Dictionary),
             3 => Some(Self::RunLength),
             4 => Some(Self::Hybrid),
+            5 => Some(Self::Lz4),
+            6 => Some(Self::Zstd),
             _ => None,
         }
     }
@@ -33,6 +37,8 @@ impl CompressionAlgorithm {
             Self::Dictionary => "Dictionary",
             Self::RunLength => "RLE",
             Self::Hybrid => "Hybrid",
+            Self::Lz4 => "LZ4",
+            Self::Zstd => "Zstd",
         }
     }
 

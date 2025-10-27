@@ -28,3 +28,8 @@ solana-accounts/
 # Development scripts (keep install.sh tracked)
 scripts/*
 !scripts/install.sh
+
+# Metrics scripts are tracked
+!scripts/metrics/
+!scripts/metrics/*.sh
+metrics_out/

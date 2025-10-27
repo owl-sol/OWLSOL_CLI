@@ -33,3 +33,6 @@ scripts/*
 !scripts/metrics/
 !scripts/metrics/*.sh
 metrics_out/
+
+# Metrics output directory
+metrics_out/
